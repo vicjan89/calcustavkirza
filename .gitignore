@@ -1,0 +1,10 @@
+.idea
+venv
+*.html
+build
+out
+*.rst
+static
+/*.log
+source_old
+*.png

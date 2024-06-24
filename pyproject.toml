@@ -1,0 +1,29 @@
+[tool.poetry]
+name = "calcustavkirza"
+version = "0.1.0"
+description = ""
+authors = ["vicjan89 <vicjan89@gmail.com>"]
+readme = "README.md"
+
+[tool.poetry.dependencies]
+python = ">=3.11.9,<3.13"
+matplotlib = "^3.8.4"
+pydantic = "^2.6.4"
+PyYAML = "^6.0.1"
+textengines = {path = "../textengines", develop = true}
+pandapowertools = {path = "../pandapowertools", develop = true}
+sphinx = "^7.2.6"
+setuptools = "^70.1.0"
+ipython = "^8.23.0"
+store = {path = "../store", develop = true}
+
+
+[tool.poetry.group.dev.dependencies]
+pytest = "^8.1.1"
+
+[build-system]
+requires = ["poetry-core"]
+build-backend = "poetry.core.masonry.api"
+
+[tool.poetry.scripts]
+calc = "calcustavkirza.main:main"
