@@ -114,7 +114,8 @@ class Net(Element):
             self.te.table_head('Наименование', 'Марка', self.te.m(r'S_n,mva'), self.te.m(r'P_K,kW'), self.te.m(r'U_{k,hl}'),
                                self.te.m(r'U_{nl},kV'), self.te.m('P_{KZ},kW'), widths=(1,2,1,1,1,1,1))
             for i, t in self.net.trafo3w.sort_index().iterrows():
-                self.te.table_row(t['name'], t['std_type'], t['sn_hv_mva'], t['vkr_hv_percent'] /100 * t['sn_hv_mva']*1000,
+                self.te.table_row(t['name'], t['std_type'], t['sn_hv_mva'],
+                                  f"{t['vkr_hv_percent'] /100 * t['sn_hv_mva']*1000:.1f}",
                                   t['vk_hv_percent'],
                                   t['vn_lv_kv'], t['vkr_hv_percent'] * t['sn_hv_mva'] * 10)
             self.te.table_name('Результат расчётов для трёхобмоточных трансформаторов схемы замещения приведенные к напряжению обмоток НН')
