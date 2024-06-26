@@ -18,7 +18,7 @@ class MTZ(Element):
     isz: int
     isz_note: str = ''
     index_ct: int | None = None
-    t: float | None = None
+    t: float | str | None = None
     k: int | None = None # коэффициент кривой обратнозависимой характеристики
     t_note: str  = ''
     t_au: float | None = None
@@ -35,13 +35,13 @@ class MTZ(Element):
         te.table_name(self.name)
         te.table_head('Наименование величины', 'Расчётная формула, обозначение', 'Результат расчёта', widths=(3,2,1))
         if self.irmax:
-            iszpredv = self.Kn/self.Kv*self.Ksz*self.Irmax
+            iszpredv = self.Kn/self.Kv*self.Ksz*self.irmax
             te.table_row('Первичный ток срабатывания защиты по отстройке от тока нагрузки, А',
                               'Iсз≥Кн / Кв·Ксзп·Iрмакс', f'{iszpredv:.2f}')
             te.table_row('Коэффициент надёжности', 'Кн', self.Kn)
             te.table_row('Коэффициент возврата', 'Кв', self.Kv)
             te.table_row('Коэффициент самозапуска', 'Ксзп', self.Ksz)
-            te.table_row('Максимальный рабочий ток или номинальный ток ТТ, А', 'Iрмакс', f'{Irmax:.2f}')
+            te.table_row('Максимальный рабочий ток или номинальный ток ТТ, А', 'Iрмакс', f'{self.irmax:.2f}')
         if self.isz_posl:
             te.table_row(f'Первичный ток срабатывания защиты по условию согласования с последующей защитой '
                               f'{self.isz_posl_note}, А',

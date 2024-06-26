@@ -1,3 +1,6 @@
+from textengines.interfaces import TextEngine
+
+
 from calcustavkirza.classes import Element
 
 class BFP(Element):
@@ -9,14 +12,14 @@ class BFP(Element):
     name: str = 'Устройство резервирования отказа выключателя'
     name_short: str = 'УРОВ'
 
-    def calc_ust(self):
-        self.te.table_name(self.name)
-        self.te.table_head('Наименование величины', 'Расчётная формула, обозначение', 'Результат расчёта', widths=(3,2,1))
-        self.te.table_row('Принимаем первичный ток срабатывания равным, А', 'Iсз', self.pris.ct[self.index_ct].i1 * self.isz)
-        self.te.table_row('Время срабатывания , с', 'tср', self.t)
+    def calc_ust(self, te: TextEngine, res_sc_min: list, res_sc_max: list):
+        te.table_name(self.name)
+        te.table_head('Наименование величины', 'Расчётная формула, обозначение', 'Результат расчёта', widths=(3,2,1))
+        te.table_row('Принимаем первичный ток срабатывания равным, А', 'Iсз', self.isz)
+        te.table_row(f'Время срабатывания {self.t_note} , с', 'tср', self.t)
 
     def table_settings(self):
-        self.te.table_row(self.name, f'{self.isz} A', self.t, '')
+        te.table_row(self.name, f'{self.isz} A', self.t, '')
 
     def table_settings_bmz_data(self):
         res = []

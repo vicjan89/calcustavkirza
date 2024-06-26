@@ -114,18 +114,24 @@ class Net(Element):
             self.te.table_head('Наименование', 'Марка', self.te.m(r'S_n,mva'), self.te.m(r'P_K,kW'), self.te.m(r'U_{k,hl}'),
                                self.te.m(r'U_{nl},kV'), self.te.m('P_{KZ},kW'), widths=(1,2,1,1,1,1,1))
             for i, t in self.net.trafo3w.sort_index().iterrows():
+                k = max(t['sn_hv_mva'], t['sn_mv_mva']) / min(t['sn_hv_mva'], t['sn_mv_mva'])
+                vk = t['vk_hv_percent'] * k
+                pk = t['vkr_hv_percent'] /100 * t['sn_hv_mva']*1000
                 self.te.table_row(t['name'], t['std_type'], t['sn_hv_mva'],
-                                  f"{t['vkr_hv_percent'] /100 * t['sn_hv_mva']*1000:.1f}",
-                                  t['vk_hv_percent'],
+                                  f"{pk:.1f}",
+                                  vk,
                                   t['vn_lv_kv'], t['vkr_hv_percent'] * t['sn_hv_mva'] * 10)
             self.te.table_name('Результат расчётов для трёхобмоточных трансформаторов схемы замещения приведенные к напряжению обмоток НН')
             self.te.table_head('Наименование', self.te.m(r'U_{kr,hl}'), self.te.m(r'U_{kx,hl}'), self.te.m('K_T'),
                                self.te.m('R_T'), self.te.m('X_T'), self.te.m('Z_T'))
             for i, t in self.net.trafo3w.sort_index().iterrows():
-                ukx = math.sqrt(t['vk_hv_percent']**2 - t['vkr_hv_percent']**2)
+                k = max(t['sn_hv_mva'], t['sn_mv_mva']) / min(t['sn_hv_mva'], t['sn_mv_mva'])
+                vk = t['vk_hv_percent'] * k
+                vkr = t['vkr_hv_percent'] * k
+                ukx = math.sqrt(vk**2 - vkr**2)
                 kt = 0.95 * 1.1 / (1 + 0.6 * ukx / 100)
-                z = t['vk_hv_percent'] * t['vn_lv_kv'] ** 2 / 100 / t['sn_hv_mva'] / kt
-                r = kt * t['vkr_hv_percent'] * t['vn_lv_kv'] ** 2 / 100 / t['sn_hv_mva']
+                z = vk * t['vn_lv_kv'] ** 2 / 100 / t['sn_hv_mva'] / kt
+                r = kt * vkr * t['vn_lv_kv'] ** 2 / 100 / t['sn_hv_mva']
                 self.te.table_row(t['name'], f'{t["vkr_hv_percent"]}', f'{ukx:.3f}',
                                   f'{kt:.3f}', f'{r:.3f}', f'{math.sqrt(z**2 - r**2):.3f}', f'{z:.3f}')
         if not self.net.trafo.empty:

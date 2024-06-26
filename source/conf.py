@@ -139,7 +139,7 @@ engines = ('pdflatex', 'xelatex', 'lualatex', 'platex', 'uplatex')
 latex_engine = engines[2]
 theme = ('manual', 'howto')[1]
 latex_documents = [
-    (data['master_doc'], data['master_doc']+'.tex', data['project'], 'ООО Электротехнические Решения', theme),
+    (data['master_doc'], data['project_code']+'.tex', data['project'], 'ООО Электротехнические Решения', theme),
 ]
 latex_table_style = ['standart']
 latex_additional_files = ['_static/QR.png',

@@ -12,6 +12,7 @@ from calcustavkirza.protections.AutoReclose import AutoReclose
 from calcustavkirza.protections.Avr import Avr
 from calcustavkirza.protections.voltage import Voltage
 from calcustavkirza.protections.overload import OverLoad
+from calcustavkirza.protections.T3WPDIF import T3WPDIF
 from calcustavkirza.Net import Net
 
 
@@ -35,6 +36,7 @@ class Pris(Element):
     loc: dict | None = None
     ct: list[CT] | None = None
     vt: list[VT] | None = None
+    dif: list[T3WPDIF] | None = None
     mtz: list[MTZ] | None = None
     to: list[TO] | None = None
     ef: list[EF] | None = None
@@ -74,6 +76,9 @@ class Pris(Element):
         te.h2(self.name)
         if self.note:
             te.p(self.note)
+        if self.dif:
+            for p in self.dif:
+                p.calc_ust(te=te, res_sc_min=res_sc_min, res_sc_max=res_sc_max)
         if self.mtz:
             for p in self.mtz:
                 p.calc_ust(te=te, res_sc_min=res_sc_min, res_sc_max=res_sc_max)

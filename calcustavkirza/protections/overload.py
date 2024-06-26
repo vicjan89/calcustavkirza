@@ -1,29 +1,35 @@
 import math
 
+
+from textengines.interfaces import TextEngine
+
+
 from calcustavkirza.classes import Element
 
 class OverLoad(Element):
     isz: float
     index_ct: int | None = None
     t: float
-    t_note: str = 'сигнал'
+    t_note: str = 'на сигнал'
+    Kn: float = 1.1
     sn: int
     un: float
     name: str = 'Перегрузка'
     name_short: str = 'Перегрузка'
 
-    def calc_ust(self):
-        self.te.table_name(self.name)
-        self.te.table_head('Наименование величины', 'Расчётная формула, обозначение', 'Результат расчёта', widths=(3, 2, 1))
-        inom = self.sn / self.un / math.sqrt(3)
-        self.te.table_row('Первичный ток срабатывания защиты по условию срабатывания при достижении номинального тока, А',
-                          'Iсз≥·Iном', f'{inom:.2f}')
-        self.te.table_row('Первичный ток срабатывания защиты принимаем, А',
+    def calc_ust(self, te: TextEngine, res_sc_min: list, res_sc_max: list):
+        te.table_name(self.name)
+        te.table_head('Наименование величины', 'Расчётная формула, обозначение', 'Результат расчёта', widths=(3, 2, 1))
+        inom = self.sn / self.un / math.sqrt(3) * self.Kn
+        te.table_row('Первичный ток срабатывания защиты по условию срабатывания при достижении номинального тока, А',
+                          'Iсз≥·Iном·Кн', f'{inom:.2f}')
+        te.table_row('Коэффициент надёжности', 'Кн', self.Kn)
+        te.table_row('Первичный ток срабатывания защиты принимаем, А',
                           'Iсз', f'{self.isz}')
-        self.te.table_row('Время срабатывания на сигнал', 't', self.t)
+        te.table_row('Время срабатывания', 't', f'{self.t} {self.t_note}')
 
     def table_settings(self):
-        self.te.table_row(self.name, f'{self.isz} A', self.t, '')
+        te.table_row(self.name, f'{self.isz} A', self.t, '')
 
     def table_settings_bmz_data(self):
         res = [self.isz]

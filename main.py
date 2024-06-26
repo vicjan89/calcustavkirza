@@ -19,7 +19,7 @@ def scheme():
     te.save()
 
 def calc_kz():
-    te = ReStructuredText(path='Polimir\Polimir_sc.rst')
+    te = ReStructuredText(path=r'Polimir\Polimir_sc.rst')
     res = []
     modes = [r'Polimir\3-х фазное КЗ в максимальном режиме', r'Polimir\2-х фазное КЗ в минимальном режиме']
     for mode in modes:
@@ -35,7 +35,7 @@ def ust():
     s_min = YamlStorage(r'Polimir\2-х фазное КЗ в минимальном режиме')
     res_sc_min = s_min.read()
     res_sc_max = s_max.read()
-    te = ReStructuredText(path='Polimir\Polimir_ust.rst')
+    te = ReStructuredText(path=r'Polimir\Polimir_ust.rst')
     st = TomlStorage(r'Polimir\Setting_polimir.toml')
     p = Setting(**st.read())
     p.do(te=te, res_sc_min=res_sc_min, res_sc_max=res_sc_max)
