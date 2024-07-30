@@ -13,6 +13,9 @@ from calcustavkirza.protections.Avr import Avr
 from calcustavkirza.protections.voltage import Voltage
 from calcustavkirza.protections.overload import OverLoad
 from calcustavkirza.protections.T3WPDIF import T3WPDIF
+from calcustavkirza.protections.DZSH import DZSH
+from calcustavkirza.protections.ZMQPDIS import ZMQPDIS
+from calcustavkirza.protections.EF4PTOC import EF4PTOC
 from calcustavkirza.Net import Net
 
 
@@ -34,20 +37,23 @@ class VT(Element):
 
 class Pris(Element):
     loc: dict | None = None
-    ct: list[CT] | None = None
-    vt: list[VT] | None = None
-    dif: list[T3WPDIF] | None = None
-    mtz: list[MTZ] | None = None
-    to: list[TO] | None = None
-    ef: list[EF] | None = None
-    lzsh: list[LZSH] | None = None
-    bfp: list[BFP] | None = None
-    cbfp: list[ControlBFP] | None = None
-    efdir: list[EFdir] | None = None
-    apv: list[AutoReclose] | None = None
-    avr: list[Avr] | None = None
-    voltage: list[Voltage] | None = None
-    overload: list[OverLoad] | None = None
+    ct: list[CT] = []
+    vt: list[VT] = []
+    dif: list[T3WPDIF] = []
+    dzsh: list[DZSH] = []
+    zm: list[ZMQPDIS] = []
+    ef4: list[EF4PTOC] = []
+    mtz: list[MTZ] = []
+    to: list[TO] = []
+    ef: list[EF] = []
+    lzsh: list[LZSH] = []
+    bfp: list[BFP] = []
+    cbfp: list[ControlBFP] = []
+    efdir: list[EFdir] = []
+    apv: list[AutoReclose] = []
+    avr: list[Avr] = []
+    voltage: list[Voltage] = []
+    overload: list[OverLoad] = []
     net: Net | None = None
     note: str = ''
 
@@ -76,42 +82,11 @@ class Pris(Element):
         te.h2(self.name)
         if self.note:
             te.p(self.note)
-        if self.dif:
-            for p in self.dif:
+        for typ in (self.dif, self.dzsh, self.zm, self.ef4, self.mtz, self.lzsh, self.to, self.bfp, self.cbfp, self.ef, self.efdir,
+                    self.apv, self.avr, self.voltage, self.overload):
+            for p in typ:
                 p.calc_ust(te=te, res_sc_min=res_sc_min, res_sc_max=res_sc_max)
-        if self.mtz:
-            for p in self.mtz:
-                p.calc_ust(te=te, res_sc_min=res_sc_min, res_sc_max=res_sc_max)
-        if self.lzsh:
-            for p in self.lzsh:
-                p.calc_ust(te=te, res_sc_min=res_sc_min, res_sc_max=res_sc_max)
-        if self.to:
-            for p in self.to:
-                p.calc_ust(te=te, res_sc_min=res_sc_min, res_sc_max=res_sc_max)
-        if self.bfp:
-            for p in self.bfp:
-                p.calc_ust(te=te, res_sc_min=res_sc_min, res_sc_max=res_sc_max)
-        if self.cbfp:
-            for p in self.cbfp:
-                p.calc_ust(te=te, res_sc_min=res_sc_min, res_sc_max=res_sc_max)
-        if self.ef:
-            for p in self.ef:
-                p.calc_ust(te=te, res_sc_min=res_sc_min, res_sc_max=res_sc_max)
-        if self.efdir:
-            for p in self.efdir:
-                p.calc_ust(te=te, res_sc_min=res_sc_min, res_sc_max=res_sc_max)
-        if self.apv:
-            for p in self.apv:
-                p.calc_ust(te=te, res_sc_min=res_sc_min, res_sc_max=res_sc_max)
-        if self.avr:
-            for p in self.avr:
-                p.calc_ust(te=te, res_sc_min=res_sc_min, res_sc_max=res_sc_max)
-        if self.voltage:
-            for p in self.voltage:
-                p.calc_ust(te=te, res_sc_min=res_sc_min, res_sc_max=res_sc_max)
-        if self.overload:
-            for p in self.overload:
-                p.calc_ust(te=te, res_sc_min=res_sc_min, res_sc_max=res_sc_max)
+
     def table_settings(self):
         te.table_name(self.name)
         te.table_head('Функция РЗА', 'Величина срабатывания', 'Время срабатывания, сек', 'Примечание')

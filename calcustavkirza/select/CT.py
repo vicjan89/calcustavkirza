@@ -1,19 +1,30 @@
+from pydantic import BaseModel
 
-from classes import Element
+
+from calcustavkirza.classes import Element
+from textengines.interfaces import TextEngine
+
+class Ikz(BaseModel):
+    name: str #наименование ветви
+    i: float #ток КЗ
+    T: float #постоянная времени
 
 
 class CT(Element):
-    name: str
     model: str
     i1: int
     i2: int
-    i_term: int
-    ikz_max: int
-    isz_max: float
-    loads: list
+    i_term: int | None = None
+    ikz_max: int | None = None
+    isz_max: float | None = None
+    length: float #длина кабеля токовых цепей в метрах
+    s: float = 2.5 #сечение жилы кабеля токовых цепей в мм квадратных
+    loads: list | None = None
     loads_data: list = [['токовые входа микропроцессорного герминала', 0.25, 0.01],
                         ['токовые цепи измерительного преобразователя', 1, 0.04],
                         ['токовые цепи счётчика электрической энергии', 0.5, 0.02]]
+    ikz3: list[Ikz] #список трёхфазных токов КЗ
+    ikz1: list[Ikz] | None = None #список однофазных токов КЗ
 
     def metods(self):
         self.te.h2('Методика выполнения расчётов')
@@ -114,53 +125,52 @@ class CT(Element):
                   'U<sub>ТТрасч</sub> < 1000 В')
 
 
-    def calc_ust(self):
-        ...
-        # self.te.h3(self.name)
-        # self.te.p('Для расчета релейной обмотки ТТ 10 кВ приняты следующие исходные данные:')
-        # self.te.ul(f'трансформатор тока {self.model}')
-        # self.te.ul(f'номинальный ток первичной обмотки ТТ - {self.te.m("I_{H1} = ")}{self.i1} А;')
-        # self.te.ul(f'номинальный ток вторичной обмотки ТТ - {self.te.m("I_{H2} = ")}{self.i2} А;')
-        # self.te.ul(f'односекундный ток термической стойкости {self.i_term} кА;')
+    def check(self):
+        self.te.h3(self.name)
+        self.te.p('Для расчета релейной обмотки ТТ 10 кВ приняты следующие исходные данные:')
+        self.te.ul(f'трансформатор тока {self.model}')
+        self.te.ul(f'номинальный ток первичной обмотки ТТ - {self.te.m("I_{H1} = ")}{self.i1} А;')
+        self.te.ul(f'номинальный ток вторичной обмотки ТТ - {self.te.m("I_{H2} = ")}{self.i2} А;')
+        self.te.ul(f'односекундный ток термической стойкости {self.i_term} кА;')
         # # <p>- ТТ устанавливаются в {% if cell.phases==3 %}
         # # трех
         # # {% elif cell.phases==2 %}
         # # двух
         # # {% endif %}
         # # фазах;</p>
-        # self.te.ul(f'максимальный расчетный ток короткого замыкания в зоне действия защиты - {self.ikz_max} А;')
-        # self.te.ul(f'максимальная токовая уставка срабатывания зашиты - {self.isz_max} А;')
-        # self.te.p('нагрузкой токовых релейных цепей являются:')
-        # zsum = 0
-        # psum = 0
-        # for z in self.loads:
-        #     l = self.loads_data[z]
-        #     self.te.ul(f'{l[0]} с потребляемой мощностью {l[1]} ВА и сопротивлением {l[2]}')
-        #     zsum += l[2]
-        #     psum += l[1]
-        # self.te.p('переходное сопротивление контактов, принимается равным 0,05 Ом;')
-        # self.te.p(f'минимальное сечение кабельной линии от релейной обмотки трансформатора тока составляет '
-        #           f'{self.conductor_section} мм2;')
-        # self.te.p(f'максимальная длина кабельной линии от релейной обмотки трансформатора тока до конечного потребителя '
-        #           f'составляет не более {self.conductor_lenght} м')
-        #
-        # self.te.h3('Проверка на допустимый длительный ток, ток термической и динамической стойкости')
-        # self.te.p(f'Максимальный рабочий ток через первичную обмотку ТТ составляет {self.imax }A. Значит принятые к '
-        #           f'установке ТТ не будут перегружены')
-        # self.te.p(f'Максимальный ток КЗ {self.ikz_max} А меньше тока односекундной термической стойкости {self.i_term} кА '
-        #           f'и тока динамической стойкости {self.i_din} кА')
-        # self.te.p(f'Кратность тока при КЗ {self.ikz_max} / {self.i1} = {self.ikz_max/self.i1} < 40 а значит термическая '
-        #           f'двухсекундная стойкость для цифровых защит обеспечивается')
-        #
-        # self.te.h3('Расчет мощности релейной обмотки трансформаторов тока')
-        # r = 0.0175 * self.conductor_lenght / self.conductor_section
-        # self.te.math(r'R_{КАБ} = ρ \cdot \frac{l}{S} = 0,0175 \cdot \frac{'+self.conductor_lenght+r'}{'+
-        #              self.conductor_section+'} = '+r+' Ом')
-        # self.te.p('Суммарное сопротивление нагрузки для цепей РЗА и потребляемая мощность от релейной обмотки '
-        #           'трансформатора тока в режиме отсутствия напряжения на шинках управления составит:')
-        # self.te.math(r'Z_{СУММ} = ' + f'{zsum:.3f} + {r:.3f}Ом')
-        # zsum += r
-        # self.te.math(f'S = {self.i2}^2 \cdot {zsum} = {self.i2**2*zsum} ВА')
+        self.te.ul(f'максимальный расчетный ток короткого замыкания в зоне действия защиты - {self.ikz_max} А;')
+        self.te.ul(f'максимальная токовая уставка срабатывания зашиты - {self.isz_max} А;')
+        self.te.p('нагрузкой токовых релейных цепей являются:')
+        zsum = 0
+        psum = 0
+        for z in self.loads:
+            l = self.loads_data[z]
+            self.te.ul(f'{l[0]} с потребляемой мощностью {l[1]} ВА и сопротивлением {l[2]}')
+            zsum += l[2]
+            psum += l[1]
+        self.te.p('переходное сопротивление контактов, принимается равным 0,05 Ом;')
+        self.te.p(f'минимальное сечение кабельной линии от релейной обмотки трансформатора тока составляет '
+                  f'{self.conductor_section} мм2;')
+        self.te.p(f'максимальная длина кабельной линии от релейной обмотки трансформатора тока до конечного потребителя '
+                  f'составляет не более {self.conductor_lenght} м')
+
+        self.te.h3('Проверка на допустимый длительный ток, ток термической и динамической стойкости')
+        self.te.p(f'Максимальный рабочий ток через первичную обмотку ТТ составляет {self.imax }A. Значит принятые к '
+                  f'установке ТТ не будут перегружены')
+        self.te.p(f'Максимальный ток КЗ {self.ikz_max} А меньше тока односекундной термической стойкости {self.i_term} кА '
+                  f'и тока динамической стойкости {self.i_din} кА')
+        self.te.p(f'Кратность тока при КЗ {self.ikz_max} / {self.i1} = {self.ikz_max/self.i1} < 40 а значит термическая '
+                  f'двухсекундная стойкость для цифровых защит обеспечивается')
+
+        self.te.h3('Расчет мощности релейной обмотки трансформаторов тока')
+        r = 0.0175 * self.conductor_lenght / self.conductor_section
+        self.te.math(r'R_{КАБ} = ρ \cdot \frac{l}{S} = 0,0175 \cdot \frac{'+self.conductor_lenght+r'}{'+
+                     self.conductor_section+'} = '+r+' Ом')
+        self.te.p('Суммарное сопротивление нагрузки для цепей РЗА и потребляемая мощность от релейной обмотки '
+                  'трансформатора тока в режиме отсутствия напряжения на шинках управления составит:')
+        self.te.math(r'Z_{СУММ} = ' + f'{zsum:.3f} + {r:.3f}Ом')
+        zsum += r
+        self.te.math(f'S = {self.i2}^2 \cdot {zsum} = {self.i2**2*zsum} ВА')
         # <p>Следовательно, мощность вторичной релейной обмотки устанавливаемого
         # трансформатора тока выбираем {{ cell.Snom }} ВА.</p>
         # <h3>Расчет мощности измерительной обмотки трансформаторов тока.</h3>
@@ -263,3 +273,9 @@ class CT(Element):
         # {% endfor %}
         # </table>
         # {% endblock %}
+
+    def ts(self, te: TextEngine):
+        rn_kz3 = 0.0175 * self.length / self.s
+        rn_kz1 = 2 * rn_kz3
+        t_eq = sum([ikz.i * ikz.T for ikz in self.ikz3]) / sum([ikz.i for ikz in self.ikz3])
+        print(rn_kz3,rn_kz1, t_eq)

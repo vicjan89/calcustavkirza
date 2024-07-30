@@ -1,4 +1,8 @@
+from textengines.interfaces import TextEngine
+
+
 from calcustavkirza.classes import Element
+
 
 class LZSH(Element):
     isz: float
@@ -12,43 +16,43 @@ class LZSH(Element):
     Kn: float = 1.1
     Kv: float = 0.95
     Ksz: float = 1.3 # коэффициент самозапуска
-    imax: float | None = None #ток нагрузки максимальный
+    irmax: float | None = None #ток нагрузки максимальный
     bl: bool = False
     time_prot: bool = True
     name: str = 'Логическая защита шин'
     name_short: str = 'ЛЗШ'
 
-    def calc_ust(self):
+    def calc_ust(self, te: TextEngine, res_sc_min: list, res_sc_max: list):
         if not self.name:
             self.name = 'Логическая защита шин'
-        self.te.table_name(self.name)
-        self.te.table_head('Наименование величины', 'Расчётная формула, обозначение', 'Результат расчёта', widths=(3,2,1))
-        if self.imax:
-            Irmax = self.imax
+        te.table_name(self.name)
+        te.table_head('Наименование величины', 'Расчётная формула, обозначение', 'Результат расчёта', widths=(3,2,1))
+        if self.irmax:
+            Irmax = self.irmax
         else:
             Irmax = self.net.res_pf.get_max(self.pris.loc)
         iszpredv = self.Kn/self.Kv*self.Ksz*Irmax
-        self.te.table_row('Первичный ток срабатывания защиты по отстройке от тока нагрузки, А',
+        te.table_row('Первичный ток срабатывания защиты по отстройке от тока нагрузки, А',
                           'Iсз≥Кн / Кв·Ксзп·Iрмакс', f'{iszpredv:.2f}')
-        self.te.table_row('Коэффициент надёжности', 'Кн', self.Kn)
-        self.te.table_row('Коэффициент возврата', 'Кв', self.Kv)
-        self.te.table_row('Коэффициент самозапуска', 'Ксзп', self.Ksz)
-        self.te.table_row('Максимальный рабочий ток или номинальный ток ТТ, А', 'Iрмакс', f'{Irmax:.2f}')
+        te.table_row('Коэффициент надёжности', 'Кн', self.Kn)
+        te.table_row('Коэффициент возврата', 'Кв', self.Kv)
+        te.table_row('Коэффициент самозапуска', 'Ксзп', self.Ksz)
+        te.table_row('Максимальный рабочий ток или номинальный ток ТТ, А', 'Iрмакс', f'{Irmax:.2f}')
         if self.ikz_otstr:
-            self.te.table_row(f'Первичный ток срабатывания защиты по отстройке от тока {self.ikz_otstr_note}, А',
+            te.table_row(f'Первичный ток срабатывания защиты по отстройке от тока {self.ikz_otstr_note}, А',
                               'Iсз≥Кн·Iкз.отстр', f'1.1·{self.ikz_otstr} = {1.1*self.ikz_otstr:.2f}')
-        self.te.table_row('Принимаем первичный ток срабатывания защиты равным, А', 'Iсз', self.isz)
+        te.table_row('Принимаем первичный ток срабатывания защиты равным, А', 'Iсз', self.isz)
         k_ch = self.i_kz_min / self.isz
-        self.te.table_row('Проверка коэффициента чувствительности',
+        te.table_row('Проверка коэффициента чувствительности',
                           'Кч=Iкзмин/Iсз >= 1.5', f'{k_ch:.2f}')
-        self.te.table_row(f'Минимальный ток КЗ в конце защищаемого участка приведенный к напряжению места установки '
+        te.table_row(f'Минимальный ток КЗ в конце защищаемого участка приведенный к напряжению места установки '
                           f'защиты', 'Iкзмин', f'{self.i_kz_min}')
         if self.t:
-            self.te.table_row('Время срабатывания защиты, с', 'tср', self.t)
+            te.table_row('Время срабатывания защиты, с', 'tср', self.t)
         if self.k:
-            self.te.table_row(f'Коэффициент, характеризующий вид зависимой характеристики', 'k', self.k)
+            te.table_row(f'Коэффициент, характеризующий вид зависимой характеристики', 'k', self.k)
         if self.bl:
-            self.te.table_row('Блокировка вышестоящего ЛЗШ без выдержки времени', 'I', self.isz)
+            te.table_row('Блокировка вышестоящего ЛЗШ без выдержки времени', 'I', self.isz)
 
     def table_settings(self):
         t_str = ''
@@ -56,7 +60,7 @@ class LZSH(Element):
             t_str += str(self.t)
         if self.k:
             t_str += f'K={self.k} (зависимая время-токовая характеристика)'
-        self.te.table_row(self.name, f'{self.isz} A', t_str, 'При пуске блокирует вышестоящую ЛЗШ (выполнить отдельным '
+        te.table_row(self.name, f'{self.isz} A', t_str, 'При пуске блокирует вышестоящую ЛЗШ (выполнить отдельным '
                                                              'токовым органом, не блокируемым блокирующими '
                                                              'органами)' if self.bl else '')
 

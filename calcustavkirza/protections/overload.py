@@ -12,7 +12,7 @@ class OverLoad(Element):
     t: float
     t_note: str = 'на сигнал'
     Kn: float = 1.1
-    sn: int
+    sn: int #мощность в кВА
     un: float
     name: str = 'Перегрузка'
     name_short: str = 'Перегрузка'

@@ -8,6 +8,7 @@ class MTZ(Element):
     index_kz_min: int | None = None #index bus in end protected element
     i_kz_min: float | None = None #use if index is none
     i_kz_min_note: str = ''
+    index_kz_min_res: int | None = None
     i_kz_min_res: float | None = None
     i_kz_min_res_note: str = ''
     irmax: float | None = None
@@ -24,14 +25,14 @@ class MTZ(Element):
     t_au: float | None = None
     isz_posl: float | None = None
     isz_posl_note: str = ''
+    isz_prev: float | None = None
+    isz_prev_note: str = ''
     bl: bool = False
     time_prot: bool = True
     name: str = 'Максимальная токовая защита'
     name_short: str = 'МТЗ'
 
     def calc_ust(self, te: TextEngine, res_sc_min: list, res_sc_max: list):
-        if not self.name:
-            self.name = 'МТЗ'
         te.table_name(self.name)
         te.table_head('Наименование величины', 'Расчётная формула, обозначение', 'Результат расчёта', widths=(3,2,1))
         if self.irmax:
@@ -48,7 +49,13 @@ class MTZ(Element):
                               'Iсз ≥ Kн.с.·Iсз.посл.', f'{self.Kns}*{self.isz_posl} ={self.Kns*self.isz_posl:.2f}')
             te.table_row('Коэффициент надёжности согласования с последующей защитой',
                               'Kн.с.', self.Kns)
-        te.table_row(f'Принимаем первичный ток срабатывания защиты {self.isz_note} равным, А', 'Iсз', self.isz)
+        if self.isz_prev:
+            te.table_row(f'Первичный ток срабатывания защиты по условию согласования с предыдущей защитой '
+                         f'{self.isz_prev_note}, А',
+                         'Iсз ≥ Iсз.посл./Kн.с.', f'{self.isz_prev}/{self.Kns} ={self.isz_prev/self.Kns:.2f}')
+            te.table_row('Коэффициент надёжности согласования с предыдущей защитой',
+                         'Kн.с.', self.Kns)
+        te.table_row(f'Принимаем первичный ток срабатывания защиты ({self.isz_note}) равным, А', 'Iсз', self.isz)
         if self.index_kz_min is not None:
             i_kz_min = res_sc_min[self.index_kz_min][1]
         else:
@@ -58,16 +65,22 @@ class MTZ(Element):
                           'Кч=Iкзмин/Iсз >= 1.5', f'{k_ch:.2f}')
         te.table_row(f'Минимальный ток КЗ в конце защищаемого участка приведенный к напряжению места установки '
                           f'защиты', f'Iкзмин{self.i_kz_min_note}', f'{i_kz_min:.1f}')
-        if self.i_kz_min_res:
-            k_ch_res = self.i_kz_min_res / self.isz
-            # assert k_ch >= 1.2, f'Коэффициент чувствительности МТЗ в зоне резервирования {self.pris.name} мал ({k_ch:.2f})'
+        if self.index_kz_min_res is not None:
+            i_kz_min_res = res_sc_min[self.index_kz_min_res][1]
+        else:
+            if self.i_kz_min_res:
+                i_kz_min_res = self.i_kz_min_res
+            else:
+                i_kz_min_res = None
+        if i_kz_min_res:
+            k_ch_res = i_kz_min_res / self.isz
             note = ''
             if k_ch_res < 1.3:
                 note = '. Допускается не резервировать отключения КЗ (п.3.2.17 ПУЭ)'
             te.table_row(f'Проверка коэффициента чувствительности в зоне резервирования{note}',
                               'Кч=Iкзмин/Iсз >= 1.3', f'{k_ch_res:.2f}')
             te.table_row(f'Минимальный ток КЗ в конце зоны резервирования приведенный к напряжению места установки '
-                              f'защиты, A', 'Iкзмин', f'{self.i_kz_min_res_note} {self.i_kz_min_res}')
+                              f'защиты, A', 'Iкзмин', f'{self.i_kz_min_res_note} {i_kz_min_res}')
         if self.t:
             te.table_row(f'Время срабатывания защиты по условию селективности, с {self.t_note}', 'tср', self.t)
         if self.k:
@@ -76,21 +89,10 @@ class MTZ(Element):
             te.table_row('Блокирует ЛЗШ без выдержки времени, с', 't', 0)
         if self.t_au:
             te.table_row('Время срабатывания защиты при автоматическом ускорении, с', 't АУ', self.t_au)
-        # {% if 'posl' in prot.keys() %}
-        # <tr>
-        # <td>Ток при котором проверяется селективность c {{ name }}</td>
-        # <td>I<sub>сз.посл.</sub></td>
-        # <td>{{ '%.1f' | format(isz_posl) }}</td>
-        # </tr>
-        # {% set t_posl, name = calc_net.get_posl_prot_tmax(prot) %}
-        # <tr>
-        # <td>Время срабатывания последующей защиты: {{ name }}</td>
-        # <td>t<sub>посл.</sub></td>
-        # <td>{{ t_posl }}</td>
-        # </tr>
-        # {% endif %}
         if k_ch < 1.5:
-            te.warning(f'Коэффициент чувствительности МТЗ мал ({k_ch:.2f})')
+            te.warning(f'Коэффициент чувствительности мал ({k_ch:.2f})')
+        if i_kz_min_res and k_ch_res < 1.3:
+            te.warning(f'Коэффициент чувствительности в зоне резервирования мал ({k_ch:.2f})')
 
     def table_settings(self):
         t_str = ''

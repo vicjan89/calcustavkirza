@@ -8,8 +8,11 @@ from calcustavkirza.classes import Element
 
 
 class TO(Element):
-    i_kz_begin_index: int # индекс шины для проверки чувствительности
+    i_kz_begin_index: int | None = None # индекс шины для проверки чувствительности
+    i_kz_begin: int | None = None # ток КЗ в максимальном режиме шины для проверки чувствительности
     i_kz_end_index: int | None = None # индекс шины для отстройки тока срабатывания
+    i_kz_end: int | None = None # ток КЗ в максимальном режиме в конце линии для отстройки тока срабатывания
+    i_kz_end_note: str = ''
     kn: float = 1.1
     Kns: float = 1.1
     isz: int
@@ -29,22 +32,21 @@ class TO(Element):
     def calc_ust(self, te: TextEngine, res_sc_min: list, res_sc_max: list):
         te.table_name(self.name)
         te.table_head('Наименование величины', 'Расчётная формула, обозначение', 'Результат расчёта', widths=(3,2,1))
-        if self.i_kz_end_index is not None:
-            i_kz_max  = self.net.res_sc_bus.get_max(self.i_kz_end_index)
-            bus_u = self.net.net.bus.at[self.i_kz_end_index, 'vn_kv']
-            if bus_u != 10:
-                i_kz_max = i_kz_max / 10.5 * bus_u
+        if self.i_kz_end_index is not None or self.i_kz_end is not None:
+            if self.i_kz_end_index is not None:
+                i_kz_max  = self.net.res_sc_max[self.i_kz_end_index][1]
+            else:
+                i_kz_max = self.i_kz_end
             te.table_row('Ток срабатывания защиты по условию отстройки от КЗ в конце защищаемого участка, А',
-                              r'I ≥ Kн*Iкз.конц.', f'{i_kz_max:.2f}* {self.kn} ={i_kz_max*self.kn:.2f}')
+                              r'I ≥ Kн*Iкз.конц.', f'{self.kn} * {i_kz_max:.2f} ={i_kz_max*self.kn:.2f}')
+            te.table_row('Максимальный ток КЗ в конце защищаемого участка', f'Iкз.конц.{self.i_kz_end_note}',
+                         i_kz_max)
             te.table_row('Коэффициент надёжности отстройки', te.m(r'K_{H}'), self.kn)
-        # if self.i_btn:
-        #     i_btn = self.i_btn
-        # else:
-        #     i_btn = self.net.res_mci.get_max(self.pris.loc)
-        # te.table_row('Ток срабатывания защиты по условию отстройки от броска тока намагничивания '
-        #                   'трансформаторов, А', te.m(r'I ≥ K_{BTH} \cdot \frac{\sum S_n}{U_n \cdot \sqrt{3}}'),
-        #                   f'{i_btn:.2f}')
-        # te.table_row('Коэффициент отстройки от броска тока намагничивания ', te.m(r'K_{BTH}'), 4)
+        if self.i_btn:
+            te.table_row('Ток срабатывания защиты по условию отстройки от броска тока намагничивания '
+                              'трансформаторов, А', te.m(r'I ≥ K_{BTH} \cdot \frac{\sum S_n}{U_n \cdot \sqrt{3}}'),
+                              f'{self.i_btn:.2f}')
+            te.table_row('Коэффициент отстройки от броска тока намагничивания ', te.m(r'K_{BTH}'), 4)
         if self.isz_posl:
             te.table_row(f'Первичный ток срабатывания защиты по условию согласования с последующей защитой '
                               f'{self.isz_posl_note}, А',
@@ -52,7 +54,10 @@ class TO(Element):
             te.table_row('Коэффициент надёжности согласования с последующей защитой',
                               'Kн.с.', self.Kns)
         te.table_row(f'Принимаем первичный ток срабатывания защиты {self.isz_note} равным, А', 'Iсз', self.isz)
-        i_kz_max_begin = res_sc_max[self.i_kz_begin_index][1]
+        if self.i_kz_begin_index is not None:
+            i_kz_max_begin = res_sc_max[self.i_kz_begin_index][1]
+        else:
+            i_kz_max_begin = self.i_kz_begin
         k_ch = i_kz_max_begin/self.isz
         te.table_row('Проверка коэффициента чувствительности при КЗ в начале линии',
                           'Кч=Iкзмакс/Iсз', f'{k_ch:.2f}')

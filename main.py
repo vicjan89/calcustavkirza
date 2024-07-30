@@ -35,9 +35,10 @@ def ust():
     s_min = YamlStorage(r'Polimir\2-х фазное КЗ в минимальном режиме')
     res_sc_min = s_min.read()
     res_sc_max = s_max.read()
-    te = ReStructuredText(path=r'Polimir\Polimir_ust.rst')
-    st = TomlStorage(r'Polimir\Setting_polimir.toml')
-    p = Setting(**st.read())
+    te = ReStructuredText(path=r'Polimir\Polimir_ust_vl_110.rst')
+    st = TomlStorage(r'Polimir\settings_vl_110.toml')
+    data = st.read()
+    p = Setting(**data)
     p.do(te=te, res_sc_min=res_sc_min, res_sc_max=res_sc_max)
     te.save()
 
