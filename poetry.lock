@@ -1270,7 +1270,7 @@ test = ["pytest", "pytest-xdist"]
 
 [[package]]
 name = "pandapowertools"
-version = "0.2.0"
+version = "0.3.0"
 description = ""
 optional = false
 python-versions = ">=3.11.9,<3.13"

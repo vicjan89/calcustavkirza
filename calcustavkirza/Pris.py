@@ -87,42 +87,13 @@ class Pris(Element):
             for p in typ:
                 p.calc_ust(te=te, res_sc_min=res_sc_min, res_sc_max=res_sc_max)
 
-    def table_settings(self):
+    def table_settings(self, te: TextEngine):
         te.table_name(self.name)
         te.table_head('Функция РЗА', 'Величина срабатывания', 'Время срабатывания, сек', 'Примечание')
-        if self.mtz:
-            for p in self.mtz:
-                p.table_settings()
-        if self.lzsh:
-            for p in self.lzsh:
-                p.table_settings()
-        if self.to:
-            for p in self.to:
-                p.table_settings()
-        if self.bfp:
-            for p in self.bfp:
-                p.table_settings()
-        if self.cbfp:
-            for p in self.cbfp:
-                p.table_settings()
-        if self.ef:
-            for p in self.ef:
-                p.table_settings()
-        if self.efdir:
-            for p in self.efdir:
-                p.table_settings()
-        if self.apv:
-            for p in self.apv:
-                p.table_settings()
-        if self.avr:
-            for p in self.avr:
-                p.table_settings()
-        if self.voltage:
-            for p in self.voltage:
-                p.table_settings()
-        if self.overload:
-            for p in self.overload:
-                p.table_settings()
+        for typ in (self.dif, self.dzsh, self.zm, self.ef4, self.mtz, self.lzsh, self.to, self.bfp, self.cbfp, self.ef, self.efdir,
+                    self.apv, self.avr, self.voltage, self.overload):
+            for p in typ:
+                p.table_settings(te=te)
 
     def table_settings_bmz(self):
         res = []

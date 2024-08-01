@@ -14,7 +14,7 @@ class AutoReclose(Element):
         te.table_head('Наименование величины', 'Расчётная формула, обозначение', 'Результат расчёта', widths=(3,2,1))
         te.table_row('Время срабатывания, с', 'tср', self.t)
 
-    def table_settings(self):
+    def table_settings(self, te: TextEngine):
         te.table_row(self.name,'', self.t, '')
 
     def table_settings_bmz_data(self):

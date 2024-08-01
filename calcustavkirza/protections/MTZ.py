@@ -94,7 +94,7 @@ class MTZ(Element):
         if i_kz_min_res and k_ch_res < 1.3:
             te.warning(f'Коэффициент чувствительности в зоне резервирования мал ({k_ch:.2f})')
 
-    def table_settings(self):
+    def table_settings(self, te: TextEngine):
         t_str = ''
         if self.t:
             t_str += str(self.t)
@@ -102,7 +102,10 @@ class MTZ(Element):
             t_str += f'K={self.k} (зависимая время-токовая характеристика)'
         if self.t_au:
             t_str += f' tау={self.t_au}'
-        te.table_row(self.name, f'{self.isz} A', t_str, 'При пуске блокирует вышестоящую ЛЗШ' if self.bl else '')
+        note = self.isz_note
+        if self.bl:
+            note = 'При пуске блокирует вышестоящую ЛЗШ. ' + note
+        te.table_row(self.name, f'{self.isz} A', t_str, note)
 
     def table_settings_bmz_data(self):
         res = [self.isz]

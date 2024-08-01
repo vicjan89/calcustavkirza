@@ -75,13 +75,13 @@ class TO(Element):
             te.warning(f'Токовая отсечка {self.pris.name} не отстроена от КЗ в конце защищаемого участка '
                             f'({i_kz_max})')
 
-    def table_settings(self):
+    def table_settings(self, te: TextEngine):
         t_str = ''
-        if self.t:
+        if self.t is not None:
             t_str += str(self.t)
         if self.k:
             t_str += f'K={self.k}'
-        te.table_row(self.name, f'{self.isz} A', t_str, '')
+        te.table_row(self.name, f'{self.isz} A', t_str, self.isz_note)
 
     def table_settings_bmz_data(self):
         res = [self.isz]

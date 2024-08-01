@@ -28,7 +28,7 @@ class OverLoad(Element):
                           'Iсз', f'{self.isz}')
         te.table_row('Время срабатывания', 't', f'{self.t} {self.t_note}')
 
-    def table_settings(self):
+    def table_settings(self, te: TextEngine):
         te.table_row(self.name, f'{self.isz} A', self.t, '')
 
     def table_settings_bmz_data(self):

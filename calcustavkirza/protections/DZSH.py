@@ -20,6 +20,7 @@ class DZSH(Element):
     i_kz_min_note: str = ''
     i_nagr_max: float #максимальный ток нагрузки
     i_overload: float #максимальный ток перегркузки
+    ib1: float #тормозной ток первого перегиба
     s2: float
     t_max: float #наибольшая задержка времени РЗА присоединений питающих шины
     dt: float = 0.3 #время запаса для расчёта времени контоля целостности ТТ
@@ -96,33 +97,9 @@ class DZSH(Element):
                      te.m(r'T_{\text{МАКС.РЗА}} + \Delta T_{\text{ЗАП}} = ' + f'{self.t_max} + {self.dt}'),
                      self.t_max + self.dt)
 
-    # def table_settings(self):
-    #     t_str = ''
-    #     if self.t:
-    #         t_str += str(self.t)
-    #     if self.k:
-    #         t_str += f'K={self.k} (зависимая время-токовая характеристика)'
-    #     if self.t_au:
-    #         t_str += f' tау={self.t_au}'
-    #     te.table_row(self.name, f'{self.isz} A', t_str, 'При пуске блокирует вышестоящую ЛЗШ' if self.bl else '')
-    #
-    # def table_settings_bmz_data(self):
-    #     res = [self.isz]
-    #     if self.index_ct is not None:
-    #         res.append(self.pris.ct[self.index_ct].i1toi2(self.isz))
-    #     else:
-    #         res.append('')
-    #     res.extend([self.t, self.k, self.t_au])
-    #     return res
-    #
-    # def table_settings_bmz_second(self):
-    #     res = ['А перв']
-    #     res.append('А втор')
-    #     res.extend(['Т сраб,с', 'К харк', 'Т сраб АУ,с'])
-    #     return res
-    #
-    # def table_settings_bmz_first(self):
-    #     return f'{self.name_short} {self.t_note if self.t_note else "отключение"}'
-    #
-    # def table_settings_bmz(self):
-    #     return [self.table_settings_bmz_first(), self.table_settings_bmz_second(), self.table_settings_bmz_data()]
+    def table_settings(self, te: TextEngine):
+        te.table_row(self.name, te.m(r'I_{\text{Д>}}'), self.id, '')
+        te.table_row(self.name, te.m(r'I_{\text{Б1}}'), self.ib1, '')
+        te.table_row(self.name, te.m(r'f_1'), self.s2, '')
+        te.table_row(self.name, te.m(r'I_{\text{Д>>}}'), self.id_ots, '')
+        te.table_row(self.name, te.m(r'I_{\text{Д.МИН}}'), self.id_alarm, '')

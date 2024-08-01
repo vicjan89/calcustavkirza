@@ -18,7 +18,7 @@ class BFP(Element):
         te.table_row('Принимаем первичный ток срабатывания равным, А', 'Iсз', self.isz)
         te.table_row(f'Время срабатывания {self.t_note} , с', 'tср', self.t)
 
-    def table_settings(self):
+    def table_settings(self, te: TextEngine):
         te.table_row(self.name, f'{self.isz} A', self.t, '')
 
     def table_settings_bmz_data(self):
