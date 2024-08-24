@@ -1,5 +1,9 @@
 import json
 import math
+import os
+
+from store.store import JsonStorage
+
 
 import pandapower as pp
 import numpy as np
@@ -192,7 +196,7 @@ def make_selectivity_map_spread(functions_list: list, labels: list, i_begin, i_e
     plt.savefig(name_file+'.png',  format="png", dpi=1000)
     close()
 
-def make_selectivity_map_all(functions_list: list, labels: list, i_begin, i_end, name_file, time_max=1.5):
+def make_selectivity_map_all(functions_list: list, labels: list, i_begin, i_end, name_file, time_max=1.5, title=''):
     '''
     Создаёт график в формате png с ампер-секундными характеристиками защит
     :param functions_list: список функций для характеристик
@@ -203,6 +207,7 @@ def make_selectivity_map_all(functions_list: list, labels: list, i_begin, i_end,
     step = (i_end-i_begin)/300
     i_list = [i*step+i_begin for i in range(300)]
     fig, ax = plt.subplots()
+    plt.title(title)
     for num, func in enumerate(functions_list):
         if isinstance(func, tuple):
             func_list_min = []
@@ -211,7 +216,7 @@ def make_selectivity_map_all(functions_list: list, labels: list, i_begin, i_end,
             for i in i_list:
                 y1 = func[0](i)
                 y2 = func[1](i)
-                if y1 and y2:
+                if y1 is not None and y2 is not None:
                     func_list_min.append(y1)
                     func_list_max.append(y2)
                     x.append(i)
@@ -220,12 +225,14 @@ def make_selectivity_map_all(functions_list: list, labels: list, i_begin, i_end,
             func_list = [func(i) for i in i_list]
             ax.plot(i_list, func_list, color=f'C{num}', label=labels[num])
     ax.set_xlabel("Iкз,A", fontsize=13)
+    ax.set_xlim(xmin=0, xmax=i_end*1.1)
+    ax.set_yscale('log')
     ax.set_ylabel("t,сек", fontsize=13)
     ax.set_ylim(ymin=0, ymax=time_max)
     ax.minorticks_on()
     ax.grid(which='major', lw=1)
     ax.grid(which='minor', lw=0.5)
-    lgd = plt.legend(loc='upper center', bbox_to_anchor=(0.5, -0.05))
+    lgd = plt.legend(loc='best') #, bbox_to_anchor=(0.5, -0.05))
     plt.savefig(name_file+'.png',  format="png", dpi=1000, bbox_extra_artists=(lgd,), bbox_inches='tight')
     close()
 
@@ -261,11 +268,6 @@ def compose_selectivity_map(prisos: list, characts, labels, i_begin, i_end, name
         labels.append(f"{pris.name}\n{names}")
     make_selectivity_map_all(characts, labels, i_begin, i_end, name_file, time_max=time_max)
 
-
-def make_out_doc(template, context, name_file):
-    result = template.render(context)
-    with open(f'{name_file}.html', 'w', encoding='utf-8') as fp:
-        fp.write(result)
 
 def plot_dzt_char(dzt: dict, name_file: str = None):
     ib1 = dzt['id']/math.tan(math.radians(dzt['f1']))
@@ -321,3 +323,30 @@ def get_z1_trafo(tr: DataFrame):
              1: 0.027,
              1.6: 0.018}
         return z[s], tr['vn_lv_kv']*1000, u_hv*1000
+
+def charact_IEC60255_151(ir, tr, k, c, a, i): #https://product-help.schneider-electric.com/ED/MTZ/Micrologic_X_User_Guide/EDMS/DOCA0102EN/DOCA0102xx/ProtectionFunctions/ProtectionFunctions-21.htm
+    t6 = k / ((6 / 1.125) ** a - 1) + c
+    ti = k / ((i / 1.125 / ir) ** a - 1) + c
+    t = tr / t6 * ti
+    return t if t > 0 else 10000
+
+def charact_IEC60255_151type(inom, ir, tr, type: str):
+    k, c, a = {'SIT': (0.14, 0, 0.02),
+               'VIT': (13.5, 0, 1),
+               'EIT': (80, 0, 2),
+               'HVF': (80, 0, 4)}[type]
+    def charact(i):
+        i = i / inom / ir
+        return charact_IEC60255_151(ir, tr, k, c, a, i)
+    return charact
+
+def micrologic5(inom: int, ir: float, tr: float, isd: float, tsd: float, ii: float):
+    isd = ir * isd * inom
+    ii = inom * ii
+    charcsmin = [create_time_independent(isd*0.9, tsd*0.9)]
+    charcsmin.append(create_time_independent(ii*0.9, 0))
+    charcsmin.append(charact_IEC60255_151type(inom, ir/1.3, tr, 'VIT'))
+    charcsmax = [create_time_independent(isd*1.1, tsd*1.1)]
+    charcsmax.append(create_time_independent(ii*1.1, 0))
+    charcsmax.append(charact_IEC60255_151type(inom, ir, tr, 'VIT'))
+    return mix_charact(charcsmin), mix_charact(charcsmax)
