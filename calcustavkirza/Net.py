@@ -16,30 +16,14 @@ from res import Res_sc_line, Res_sc_trafo, Res_sc_bus, Res_sc, Res_pf_line, Res_
 class Net(Element):
     model_config = ConfigDict(arbitrary_types_allowed=True)
     net: pandapowerNet | None = None
-    modes: dict | None = None
-    res_sc: Res_sc | None = None
-    res_sc_bus: Res_sc_bus | None = None
-    res_pf: Res_pf | None = None
-    res_mci: Res_pf | None = None
-    res_c: Res_pf | None = None
-    index_magnetizing_current_inrush: list | None = None
-    translate: dict = {'3ph': '3-фаз',
-                 '2ph': '2-фаз',
-                 'max': 'максимальный режим',
-                 'min': 'минимальный режим'}
-    index_t: list = []
-    index_t3w: list = []
-    index_eg: list = []
-    index_eg_c: int = 0
 
     def create(self, te: TextEngine):
-        te.h1('Схема замещения сети и расчёт токов нагрузки и короткого замыкания')
+        te.h1('Схема замещения сети')
         te.p('Для выбора уставок устройств релейной защиты и автоматики производится расчет токов коротких '
                   'замыканий. Методика расчета токов КЗ позволяет определить значение периодической составляющей '
                   'полного тока КЗ для начального момента времени. Расчет производится в именованных единицах. '
                   'Сопротивления элементов схемы замещения приведены к номинальному напряжению. Расчетные режимы - '
                   'максимальный и минимальный режим системы. Расчёт произведен с применением стандарта IEC 60909.')
-        # Создание расчётной сети PandaPower
         for i, item in self.net.ext_grid.sort_index().iterrows():
             te.h2(f'Эквивалент энергосистемы подключенный к {self.net.bus.at[item["bus"], "name"]}, {item["name"]}')
             u_bus = self.net.bus.at[item['bus'], 'vn_kv']
@@ -72,24 +56,28 @@ class Net(Element):
             te.table_name('Результат расчёта сопротивлений линий электропередач')
             te.table_head('Наименование', 'Марка', 'Длина,км', 'Удельное сопротивление,Ом/км', 'Сопротивление,Ом',
                                widths=(3,3,1,2,2))
-            for i, item in self.net.line.sort_index().iterrows():
-                try:
-                    name1 = self.net.bus.at[item['from_bus'], 'name']
-                except KeyError:
-                    ...
-                if not name1:
-                    name1 = ''
-                try:
-                    name2 = self.net.bus.at[item['to_bus'], 'name']
-                except KeyError:
-                    ...
-                if not name2:
-                    name2 = ''
-                name = name1 + ' - ' + name2
-                r = item["r_ohm_per_km"]
-                x = item["x_ohm_per_km"]
-                l = item['length_km']
-                te.table_row(name, item['std_type'], l, f'{r}+j{x}', f'{r*l:.3f}+j{x*l:.3f}')
+            for i, item in self.net.line.sort_values(by='from_bus').iterrows():
+                if item['std_type']:
+                    try:
+                        name1 = self.net.bus.at[item['from_bus'], 'name']
+                    except KeyError:
+                        ...
+                    if not name1:
+                        name1 = ''
+                    try:
+                        name2 = self.net.bus.at[item['to_bus'], 'name']
+                    except KeyError:
+                        ...
+                    if not name2:
+                        name2 = ''
+                    name = name1 + ' - ' + name2
+                    r = item["r_ohm_per_km"]
+                    x = item["x_ohm_per_km"]
+                    l = item['length_km']
+                    parallel = item['parallel']
+                    count = f' {parallel}шт.' if parallel > 1 else ''
+                    te.table_row(name, f'{item['std_type']}{count}', l, f'{r}+j{x}',
+                                 f'{r*l/parallel:.3f}+j{x*l/parallel:.3f}')
         te.h2('Расчет сопротивлений трансформаторов')
         te.p('Полное сопротивление трансформатора определяем по формуле:')
         te.math(r'Z_{hl} = \frac{U_{k,hl} \cdot U_{nl}^2}{100 \cdot S_n \cdot K_T}')
@@ -118,12 +106,13 @@ class Net(Element):
                 k = max(t['sn_hv_mva'], t['sn_mv_mva']) / min(t['sn_hv_mva'], t['sn_mv_mva'])
                 vk_hl = t['vk_hv_percent'] * k
                 pk = t['vkr_hv_percent'] /100 * t['sn_hv_mva']*1000
-                te.table_row(t['name'], t['std_type'], t['sn_hv_mva'],
+                std_type = t['std_type'] if t['std_type'] else ''
+                te.table_row(t['name'], std_type, t['sn_hv_mva'],
                                   f"{pk:.1f}",
                                   vk_hl,
                                   t['vn_lv_kv'], t['vkr_hv_percent'] * t['sn_hv_mva'] * 10)
             te.table_name('Результат расчётов для трёхобмоточных трансформаторов схемы замещения приведенные к '
-                               'напряжению обмоток НН (Z0 приведено к напряжению ВН)')
+                               'напряжению обмоток ВН')
             te.table_head('Наименование', te.m(r'U_{kr,hl}'), te.m(r'U_{kx,hl}'), te.m('K_T'),
                                te.m('R_T'), te.m('X_T'), te.m('Z_T'), te.m(r'Z_0'))
             for i, t in self.net.trafo3w.sort_index().iterrows():
@@ -138,16 +127,16 @@ class Net(Element):
                 vt0 = vt1 + vt2 * vt3 / (vt2 + vt3)
                 ukx = math.sqrt(vk_hl**2 - vkr**2)
                 kt = 0.95 * 1.1 / (1 + 0.6 * ukx / 100)
-                z = vk_hl * t['vn_lv_kv'] ** 2 / 100 / t['sn_hv_mva'] / kt
+                z = vk_hl * t['vn_hv_kv'] ** 2 / 100 / t['sn_hv_mva'] / kt
                 z0 = vt0 * t['vn_hv_kv'] ** 2 / 100 / t['sn_hv_mva'] / kt
-                r = kt * vkr * t['vn_lv_kv'] ** 2 / 100 / t['sn_hv_mva']
+                r = kt * vkr * t['vn_hv_kv'] ** 2 / 100 / t['sn_hv_mva']
                 te.table_row(t['name'], f'{t["vkr_hv_percent"]}', f'{ukx:.3f}',
                                   f'{kt:.3f}', f'{r:.3f}', f'{math.sqrt(z**2 - r**2):.3f}', f'{z:.3f}', f'{z0:.3f}')
 
         if not self.net.trafo.empty:
             te.table_name('Паспортные данные для двухобмоточных трансформаторов схемы замещения')
             te.table_head('Наименование', 'Марка', te.m(r'S_n,mva'), te.m(r'P_K,kW'), te.m(r'U_{k,hl}'),
-                               te.m(r'U_{nh},kV'), te.m('P_{KZ},kW'), widths=(3,4,3,3,2,2,3))
+                               te.m(r'U_{nh},kV'), te.m('P_{KZ},kW'), widths=(3,7,3,3,2,2,3))
             for i, t in self.net.trafo.sort_index().iterrows():
                 te.table_row(t['name'], t['std_type'], t['sn_mva'], f'{t["vkr_percent"] /100 * t["sn_mva"]*1000:.3f}',
                                   t['vk_percent'],
@@ -163,7 +152,7 @@ class Net(Element):
                 r = kt * t['vkr_percent'] * t['vn_hv_kv'] ** 2 / 100 / t['sn_mva']
                 te.table_row(t['name'], f'{t["vkr_percent"]}', f'{ukx:.3f}',
                                   f'{kt:.3f}', f'{r:.3f}', f'{math.sqrt(z ** 2 - r ** 2):.3f}', f'{z:.3f}')
-        if not self.net.impedance.empty:
+        if not self.net.impedance.empty or any(self.net.line['std_type'].isna()):
             te.h2('Сопротивления токоограничивающих реакторов')
             te.p('Реактивное сопростивление токоограничевающего реактора задано в паспортных данных. Активное '
                        'сопротивление рассичтано по значению потерь активной мощности в реакторе')
@@ -178,178 +167,16 @@ class Net(Element):
                 rpu = item['rtf_pu']
                 xpu = item['xtf_pu']
                 te.table_row(f'{name_from} - {name_to}', item['name'], f'{rpu * zb:.3f}', f'{xpu * zb:.3f}')
+            for i, item in self.net.line.sort_index().iterrows():
+                if item['std_type'] is None:
+                    name_from = self.net.bus.loc[item['from_bus'], 'name'].ljust(28)
+                    name_to = self.net.bus.loc[item['to_bus'], 'name'].rjust(28)
+                    r = item["r_ohm_per_km"]
+                    x = item["x_ohm_per_km"]
+                    l = item['length_km']
+                    parallel = item['parallel']
+                    name = item['name'] if item['name'] else ''
+                    te.table_row(f'{name_from} - {name_to}', name,
+                                 f'{r * l / parallel:.3f}', f'{x * l / parallel:.3f}')
         if not self.net.load.empty:
             raise NotImplementedError
-
-
-    # def get_sc_by_mode(self, index_bus: int, mode_name: str) -> float:
-    #     return self.res_sc.res[mode_name].ikss_ka[index_bus] * 1000
-    #
-    # def get_sc_min(self, index_bus: list[int], modes: list[str] = None) -> float:
-    #     '''
-    #     Возвращает минимальный ток короткого замыкания для шины из указанных режимов
-    #     :param index_bus: список индексов шин среди которых ищем минимальный ток
-    #     :param modes: список режимов среди которых ищем ток
-    #     :return: кортеж из тока КЗ в амперах, имени режима, индекса шины с минимальным током КЗ
-    #     '''
-    #     first = True
-    #     for mode_name, res in self.res_sc.res.items():
-    #         if not modes or mode_name in modes:
-    #             for index in index_bus:
-    #                 if first:
-    #                     i_kz_min = res.ikss_ka[index]
-    #                     mode_min = mode_name
-    #                     bus_index = index
-    #                     first = False
-    #                 else:
-    #                     if i_kz_min >= res.ikss_ka[index]:
-    #                         i_kz_min = res.ikss_ka[index]
-    #                         mode_min = mode_name
-    #                         bus_index = index
-    #     return i_kz_min * 1000, mode_min, bus_index
-    #
-    # def get_sc_max(self, index_bus: list[int], modes: list[str] = None) -> float:
-    #     '''
-    #     Возвращает максимальный ток короткого замыкания для шины из указанных режимов
-    #     :param index_bus: список индексов шин среди которых ищем максимальный ток
-    #     :param modes: список режимов среди которых ищем ток
-    #     :return: кортеж из тока КЗ в амперах, имени режима, индекса шины с максимальным током КЗ
-    #     '''
-    #     first = True
-    #     for mode_name, res in self.res_sc.res.items():
-    #         if not modes or mode_name in modes:
-    #             for index in index_bus:
-    #                 if first:
-    #                     i_kz_max = res.ikss_ka[index]
-    #                     mode_max = mode_name
-    #                     bus_index = index
-    #                     first = False
-    #                 else:
-    #                     if i_kz_max <= res.ikss_ka[index]:
-    #                         i_kz_max = res.ikss_ka[index]
-    #                         mode_max = mode_name
-    #                         bus_index = index
-    #     return i_kz_max * 1000, mode_max, bus_index
-    #
-    # def get_sc_3ph_min(self, index_bus: int) -> float:
-    #     return min([res.ikss_ka[index_bus] for mode_name, res in self.res_sc.res.items() if '3ph' in mode_name]) * 1000
-    #
-    # def create_mode_magnetizing_current_inrush(self, k: float):
-    #     for i, l in self.net.load.iterrows():
-    #         l.in_service = False
-    #     for i, tr in self.net.trafo.iterrows():
-    #         self.index_magnetizing_current_inrush.append(pp.create_load(self.net, tr.hv_bus, p_mw=tr.sn_mva * k))
-    #     for i, tr in self.net.trafo3w.iterrows():
-    #         self.index_magnetizing_current_inrush.append(pp.create_load(self.net, tr.hv_bus, p_mw=tr.sn_hv_mva * k))
-    #
-    # def delete_mode_magnetizing_current_inrush(self):
-    #     pp.toolbox.drop_elements(self.net, element_type='load', element_index=self.index_magnetizing_current_inrush)
-    #     for i, l in self.net.load.iterrows():
-    #         l.in_service = True
-    #
-    # def create_mode_calc_c(self, bus_index: int):
-    #     for i, tr in self.net.trafo.iterrows():
-    #         if tr.in_service:
-    #             self.index_t.append(i)
-    #             self.net.trafo.loc[i, 'in_service'] = False
-    #     for i, tr in self.net.trafo3w.iterrows():
-    #         if tr.in_service:
-    #             self.index_t3w.append(i)
-    #             self.net.trafo3w.loc[i, 'in_service'] = False
-    #     for i, eg in self.net.ext_grid.iterrows():
-    #         if eg.in_service:
-    #             self.index_eg.append(i)
-    #             self.net.ext_grid.loc[i, 'in_service'] = False
-    #     self.index_eg_c = pp.create_ext_grid(self.net, bus_index)
-    #
-    # def delete_mode_calc_c(self):
-    #     pp.toolbox.drop_elements(self.net, 'ext_grid', self.index_eg_c)
-    #     self.net.trafo.loc[self.index_t, 'in_service'] = True
-    #     self.net.trafo3w.loc[self.index_t3w, 'in_service'] = True
-    #     self.net.ext_grid.loc[self.index_eg, 'in_service'] = True
-    #     self.index_t = []
-    #     self.index_t3w = []
-    #     self.index_eg = []
-    #
-    # def calc_pf_mode(self, mode_name):
-    #     tolerance = 1e-8
-    #     self.make_mode(mode_name)
-    #     for i in range(15):
-    #         try:
-    #             pp.runpp(self.net, tolerance_mva=tolerance, switch_rx_ratio=1)
-    #             print(f'PowerFlow calculated witn tolerance {tolerance}')
-    #             break
-    #         except pp.powerflow.LoadflowNotConverged:
-    #             tolerance *= 10
-    #     else:
-    #         print(f'PowerFlow not calculated with tolerance {tolerance}')
-    #
-    # def calc_pf_modes(self):
-    #     for mode_name, mode in self.modes.items():
-    #         self.calc_pf_mode(mode_name)
-    #         self.res_pf.line.update(f'{mode_name}', self.net.res_line)
-    #         self.res_pf.trafo.update(f'{mode_name}', self.net.res_trafo)
-    #         self.res_pf.switch.update(f'{mode_name}', self.net.res_switch)
-    #
-    # def calc_mci_modes(self):
-    #     self.create_mode_magnetizing_current_inrush(4)
-    #     for mode_name, mode in self.modes.items():
-    #         self.calc_pf_mode(mode_name)
-    #         self.res_mci.line.update(f'{mode_name}', self.net.res_line)
-    #         self.res_mci.trafo.update(f'{mode_name}', self.net.res_trafo)
-    #         self.res_mci.switch.update(f'{mode_name}', self.net.res_switch)
-    #     self.delete_mode_magnetizing_current_inrush()
-    #
-    # def get_pf_max(self, index_line: int):
-    #     return max([max((res.i_from_ka[index_line], res.i_to_ka[index_line])) for mode_name, res in self.res_pf.items()]) * 1000
-    #
-    # def get_pf_min(self, index_line: int):
-    #     return min([min((res.i_from_ka[index_line], res.i_to_ka[index_line])) for mode_name, res in self.res_pf.items()]) * 1000
-    #
-    # def get_posl_prot_imax(self, code_name: str):
-    #     isz = 0
-    #     t = None
-    #     name = None
-    #     for pris in self.select_setting:
-    #         for prot in pris['protection']:
-    #             current_code_name = prot.get('code_name', False)
-    #             if current_code_name == code_name:
-    #                 if prot['isz'] > isz:
-    #                     isz = prot['isz']
-    #                     t = prot['t']
-    #                     name = f'{pris["name_object"]} {pris["name"]} МТЗ {prot.get("suffix", "")}'
-    #     return isz, name
-    #
-    # def get_posl_protect_imax(self, protection: dict):
-    #     code_name = protection['posl']
-    #     u_current_bus: float = self.net.bus.vn_kv[protection['bus']]
-    #     isz = 0
-    #     name = None
-    #     for pris in self.select_setting:
-    #         for prot in pris['protection']:
-    #             current_code_name = prot.get('code_name', False)
-    #             if current_code_name == code_name:
-    #                 if prot['isz'] > isz:
-    #                     isz = prot['isz']
-    #                     name = f'{pris["name_object"]} {pris["name"]} МТЗ {prot.get("suffix", "")}'
-    #                     u_bus: float = self.net.bus.vn_kv[prot['bus']]
-    #     return isz * u_bus / u_current_bus, name
-    #
-    # def get_posl_prot_tmax(self, protection: dict):
-    #     code_name = protection['posl']
-    #     t = 0
-    #     name = None
-    #     for pris in self.select_setting:
-    #         for prot in pris['protection']:
-    #             current_code_name = prot.get('code_name', False)
-    #             if current_code_name == code_name:
-    #                 if prot['t'] > t:
-    #                     t = prot['t']
-    #                     name = f'{pris["name_object"]} {pris["name"]} МТЗ {prot.get("suffix", "")}'
-    #     return t, name
-    #
-    # def get_sc_min_line(self, et: str, index: int, side: str):
-    #     i_kz_min = 1000000
-    #     for mode in self.res_sc.res:
-    #         # if self.net.res_sc[mode].at[]
-    #         i_kz_min = self.net.res_sc.res[mode]
