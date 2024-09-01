@@ -1,5 +1,6 @@
 import json
 import math
+import cmath
 import os
 
 from store.store import JsonStorage
@@ -196,17 +197,27 @@ def make_selectivity_map_spread(functions_list: list, labels: list, i_begin, i_e
     plt.savefig(name_file+'.png',  format="png", dpi=1000)
     close()
 
-def make_selectivity_map_all(functions_list: list, labels: list, i_begin, i_end, name_file, time_max=1.5, title=''):
+def make_selectivity_map_all(functions_list: list, labels: list, i_nagr: list, i_begin, i_end, name_file, time_max=1.5, title=''):
     '''
     Создаёт график в формате png с ампер-секундными характеристиками защит
     :param functions_list: список функций для характеристик
     :param labels: список подписей для характеристик
-    :param i_begit: начальный ток графика
+    :param i_nagr: список токов нагрузки протекающих через защиту для сдвига характеристики
+    :param i_begin: начальный ток графика
     :param i_end: конечный ток графика
     '''
     step = (i_end-i_begin)/300
+    labels_with_cr = []
+    for label in labels:
+        for limit in (40, 80, 120, 160):
+            if len(label) > limit:
+                index = label[:limit].rfind(' ')
+                label = label[:index] + '\n' + label[index+1:]
+            else:
+                break
+        labels_with_cr.append(label)
     i_list = [i*step+i_begin for i in range(300)]
-    fig, ax = plt.subplots()
+    fig, ax = plt.subplots(figsize=(7, 10))
     plt.title(title)
     for num, func in enumerate(functions_list):
         if isinstance(func, tuple):
@@ -214,18 +225,18 @@ def make_selectivity_map_all(functions_list: list, labels: list, i_begin, i_end,
             func_list_max = []
             x = []
             for i in i_list:
-                y1 = func[0](i)
-                y2 = func[1](i)
+                y1 = func[0](i + i_nagr[num])
+                y2 = func[1](i + i_nagr[num])
                 if y1 is not None and y2 is not None:
                     func_list_min.append(y1)
                     func_list_max.append(y2)
                     x.append(i)
-            ax.fill_between(x=x, y1=func_list_min, y2=func_list_max, alpha=0.5, label=labels[num], color=f'C{num}')
+            ax.fill_between(x=x, y1=func_list_min, y2=func_list_max, alpha=0.5, label=labels_with_cr[num], color=f'C{num}')
         else:
-            func_list = [func(i) for i in i_list]
-            ax.plot(i_list, func_list, color=f'C{num}', label=labels[num])
+            func_list = [func(i + i_nagr[num]) for i in i_list]
+            ax.plot(i_list, func_list, color=f'C{num}', label=labels_with_cr[num])
     ax.set_xlabel("Iкз,A", fontsize=13)
-    ax.set_xlim(xmin=0, xmax=i_end*1.1)
+    ax.set_xlim(xmin=0, xmax=i_end)
     ax.set_yscale('log')
     ax.set_ylabel("t,сек", fontsize=13)
     ax.set_ylim(ymin=0, ymax=time_max)
@@ -339,14 +350,3 @@ def charact_IEC60255_151type(inom, ir, tr, type: str):
         i = i / inom / ir
         return charact_IEC60255_151(ir, tr, k, c, a, i)
     return charact
-
-def micrologic5(inom: int, ir: float, tr: float, isd: float, tsd: float, ii: float):
-    isd = ir * isd * inom
-    ii = inom * ii
-    charcsmin = [create_time_independent(isd*0.9, tsd*0.9)]
-    charcsmin.append(create_time_independent(ii*0.9, 0))
-    charcsmin.append(charact_IEC60255_151type(inom, ir/1.3, tr, 'VIT'))
-    charcsmax = [create_time_independent(isd*1.1, tsd*1.1)]
-    charcsmax.append(create_time_independent(ii*1.1, 0))
-    charcsmax.append(charact_IEC60255_151type(inom, ir, tr, 'VIT'))
-    return mix_charact(charcsmin), mix_charact(charcsmax)
