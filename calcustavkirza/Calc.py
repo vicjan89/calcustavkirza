@@ -10,13 +10,12 @@ from pandapowertools.net import Net
 
 
 class Calc(Element):
-    calc1ph: bool | str = False
     calc1ph_trans: bool = False
     calcmci: bool = False
     calc_load: bool = False
     transDY: bool = False
 
-    def do(self, te: TextEngine, res_sc: list[list]):
+    def do(self, te: TextEngine, res_sc: list[list], res_c: dict | None = None):
         te.h1('Расчёт параметров электрической сети')
         if self.calc_load:
             te.h2('Расчёт значений токов нагрузок')
@@ -95,41 +94,21 @@ class Calc(Element):
                 i = u_lv/math.sqrt(3)/z
                 te.table_row(tr['name'], tr['std_type'], z, f'{i:.1f}', f'{i/u_hv*u_lv*2/3:.1f}')
 
-        if self.calc1ph:
+        if res_c:
             te.h2('Расчет значений токов однофазного замыкания на землю')
-            te.p(f'Расчет токов однофазного замыкания на землю выполнен для случая замыкания на землю {self.calc1ph}'
-                      f' с выведенными из работы резисторами заземления нейтрали. Полученные токи используются для '
-                      f'отстройки ТЗНП от собственных ёмкостных токов. '
+            te.p(f'Расчет токов однофазного замыкания на землю выполнен для случая замыкания на землю: {res_c[0]}. '
+                      f'Полученные токи используются для отстройки ТЗНП от собственных ёмкостных токов. '
                       f'Расчёт ёмкостного тока замыкания на землю выполнялся по формуле:')
             te.math(r'I^{(1)} = \sqrt{3} \cdot U_n \cdot \omega \cdot C \cdot 10^{-6}')
             te.ul(f'где {te.m("U_n")} - номинальное линейное напряжение в месте замыкания, кВ')
-            te.ul(te.m(r"\omega")+' - угловая частота равная ' + te.m("2 \cdot \pi \cdot f"))
+            te.ul(te.m(r"\omega")+' - угловая частота равная ' + te.m(r"2 \cdot \pi \cdot f"))
             te.ul('f - частота в сети равная 50 Гц;')
             te.ul('C - ёмкость кабеля, нФд.')
 
-            te.table_name('Паспортные данные линий электропередач')
-            te.table_head('Наименование', 'Марка', 'Длина,км', 'Удельная ёмкость,нФ/км', 'Ёмкость,нФ',
-                               widths=(3,3,1,2,2))
-            for i, item in self.net.net.line.iterrows():
-                name1 = self.net.net.bus.at[item['from_bus'], 'name']
-                name2 = self.net.net.bus.at[item['to_bus'], 'name']
-                name = name1 + ' - ' + name2
-                c = item["c_nf_per_km"]
-                l = item['length_km']
-                te.table_row(name, item['std_type'], l, c, f'{l*c:.2f}')
-
-            self.net.create_mode_calc_c(0)
-            for mode_name, mode in self.modes.items():
-                self.net.calc_pf_mode(mode_name)
-                self.net.res_c.line.update(f'{mode_name}', self.net.net.res_line)
-            self.net.delete_mode_calc_c()
             te.table_name('Результат расчёта для линий')
-            te.table_head('Линия', *self.net.res_c.line.head)
-            for name, row in self.net.res_c.line:
-                row_txt = []
-                for r in row:
-                    row_txt.append('' if isna(r) else f'{r*3:.2f}')
-                te.table_row(name, *row_txt)
+            te.table_head('Линия', 'Ёмкостный ток, А')
+            for name, ic in res_c[1].items():
+                te.table_row(name, f'{ic:.3f}')
 
 
         te.p('Расчёты выполнены с применением языка программирования Python и библиотеки PandaPower(© Copyright '

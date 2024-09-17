@@ -4,7 +4,10 @@ from textengines.interfaces import TextEngine
 from calcustavkirza.classes import Element
 
 class BFP(Element):
-    isz: float # в процентах от номинального тока
+    '''
+    Класс для описания УРОВ
+    '''
+    isz: float # ток срабатывания в амперах
     t: float
     t_note: str = "отключение вышестоящего присоединения"
     index_ct: int | None = None

@@ -5,15 +5,15 @@ from calcustavkirza.classes import Element
 
 
 class MTZ(Element):
-    index_kz_min: int | None = None #index bus in end protected element
+    i_kz_end_index: int | None = None #index bus in end protected element
     i_kz_min: float | None = None #use if index is none
     i_kz_min_note: str = ''
     index_kz_min_res: int | None = None
     i_kz_min_res: float | None = None
     i_kz_min_res_note: str = ''
     irmax: float | None = None
-    Kn: float = 1.1
-    Kns: float = 1.1
+    kn: float = 1.1
+    kns: float = 1.1
     Kv: float = 0.95
     Ksz: float = 1.3 # коэффициент самозапуска
     isz: int
@@ -36,28 +36,28 @@ class MTZ(Element):
         te.table_name(self.name)
         te.table_head('Наименование величины', 'Расчётная формула, обозначение', 'Результат расчёта', widths=(3,2,1))
         if self.irmax:
-            iszpredv = self.Kn/self.Kv*self.Ksz*self.irmax
+            iszpredv = self.kn/self.Kv*self.Ksz*self.irmax
             te.table_row('Первичный ток срабатывания защиты по отстройке от тока нагрузки, А',
                               'Iсз≥Кн / Кв·Ксзп·Iрмакс', f'{iszpredv:.2f}')
-            te.table_row('Коэффициент надёжности', 'Кн', self.Kn)
+            te.table_row('Коэффициент надёжности', 'Кн', self.kn)
             te.table_row('Коэффициент возврата', 'Кв', self.Kv)
             te.table_row('Коэффициент самозапуска', 'Ксзп', self.Ksz)
             te.table_row('Максимальный рабочий ток или номинальный ток ТТ, А', 'Iрмакс', f'{self.irmax:.2f}')
-        if self.isz_posl:
-            te.table_row(f'Первичный ток срабатывания защиты по условию согласования с последующей защитой '
-                              f'{self.isz_posl_note}, А',
-                              'Iсз ≥ Kн.с.·Iсз.посл.', f'{self.Kns}*{self.isz_posl} ={self.Kns*self.isz_posl:.2f}')
-            te.table_row('Коэффициент надёжности согласования с последующей защитой',
-                              'Kн.с.', self.Kns)
         if self.isz_prev:
             te.table_row(f'Первичный ток срабатывания защиты по условию согласования с предыдущей защитой '
-                         f'{self.isz_prev_note}, А',
-                         'Iсз ≥ Iсз.посл./Kн.с.', f'{self.isz_prev}/{self.Kns} ={self.isz_prev/self.Kns:.2f}')
+                              f'{self.isz_prev_note}, А',
+                              'Iсз ≥ Kн.с.·Iсз.посл.', f'{self.kns}*{self.isz_prev} ={self.kns*self.isz_prev:.2f}')
             te.table_row('Коэффициент надёжности согласования с предыдущей защитой',
-                         'Kн.с.', self.Kns)
-        te.table_row(f'Принимаем первичный ток срабатывания защиты ({self.isz_note}) равным, А', 'Iсз', self.isz)
-        if self.index_kz_min is not None:
-            i_kz_min = res_sc_min[self.index_kz_min][1]
+                              'Kн.с.', self.kns)
+        if self.isz_posl:
+            te.table_row(f'Первичный ток срабатывания защиты по условию согласования с последующей защитой '
+                         f'{self.isz_posl_note}, А',
+                         'Iсз ≥ Iсз.посл./Kн.с.', f'{self.isz_posl}/{self.kns} ={self.isz_posl/self.kns:.2f}')
+            te.table_row('Коэффициент надёжности согласования с последующей защитой',
+                         'Kн.с.', self.kns)
+        te.table_row(f'Принимаем первичный ток срабатывания защиты {self.isz_note} равным, А', 'Iсз', self.isz)
+        if self.i_kz_end_index is not None:
+            i_kz_min = res_sc_min[str(self.i_kz_end_index)][1]
         else:
             i_kz_min = self.i_kz_min
         k_ch = i_kz_min / self.isz
@@ -66,7 +66,7 @@ class MTZ(Element):
         te.table_row(f'Минимальный ток КЗ в конце защищаемого участка приведенный к напряжению места установки '
                           f'защиты', f'Iкзмин{self.i_kz_min_note}', f'{i_kz_min:.1f}')
         if self.index_kz_min_res is not None:
-            i_kz_min_res = res_sc_min[self.index_kz_min_res][1]
+            i_kz_min_res = res_sc_min[str(self.index_kz_min_res)][1]
         else:
             if self.i_kz_min_res:
                 i_kz_min_res = self.i_kz_min_res

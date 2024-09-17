@@ -16,6 +16,8 @@ from calcustavkirza.protections.T3WPDIF import T3WPDIF
 from calcustavkirza.protections.DZSH import DZSH
 from calcustavkirza.protections.ZMQPDIS import ZMQPDIS
 from calcustavkirza.protections.EF4PTOC import EF4PTOC
+from calcustavkirza.protections.TOSVG import TOSVG
+from calcustavkirza.protections.MTZSVG import MTZSVG1, MTZSVG2
 from calcustavkirza.Net import Net
 
 
