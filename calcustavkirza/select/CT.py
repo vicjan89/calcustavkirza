@@ -4,12 +4,13 @@ import traceback
 import random
 from typing import Callable
 
-from pydantic import BaseModel, field_validator
+from pydantic import BaseModel, field_validator, ConfigDict
 import matplotlib.pyplot as plt
 
 
 from calcustavkirza.classes import Element
 from calcustavkirza.Isc import CaseSC
+from calcustavkirza.Characteristic import Characteristic
 from textengines.interfaces import TextEngine
 
 LOADS_DATA = [  # устройство, мощность потребления, ток при котором измерена мощность
@@ -33,11 +34,13 @@ class MethodNotReliable(ValueError):
     ...
 
 class CT(Element):
+    '''
+    model_config = ConfigDict(arbitrary_types_allowed=True)
     model: str = ''
     i1: int
     i2: int
     accuracy: str | None = None
-    sn: int # номинальная вторичная нагрузка, ВА
+    sn: int | None = None # номинальная вторичная нагрузка, ВА
     r2: float = 4 #активное сопротивление вторичной обмотки
     x2: float = 0 #реактивное сопротивление вторичной обмотки
     cos: float = 0.8 #косинус номинального значения угла сопротивления нагрузки
@@ -50,8 +53,8 @@ class CT(Element):
     kprn: float = 1 #коэффициент переходного режима номинальный (для ТТ класса Р равен 1 согласно примечания к Б.39 ПНСТ 283-2018)
     i_term: float | None = None #термическая стойкость ТТ
     i_din: float | None = None #динамическая стойкость ТТ
-    ikz_max: int | None = None
-    isz_max: float | None = None
+    ikz_max: int | None = None # short circuit current in A
+    isz_max: float | None = None # short circuit current in A
     p: float = 0.0175 #удельное сопротивление
     length: float #длина кабеля токовых цепей в метрах
     s: float = 2.5 #сечение жилы кабеля токовых цепей в мм квадратных
@@ -62,13 +65,46 @@ class CT(Element):
     alfa: float = 0.9 #коэффициент, учитывающий возможное отклонение действительной характеристики данного ТТ от типовой
     ku: float = 2. #ударный коэффициент (для расчёта напряжения на зажимах ТТ)
     v: float = 0 #фаза периодической составляющей в момент КЗ в радианах
+    vach: Characteristic | None = None # класс характеристик применительно для ВАХ
+    '''
+    model_config = ConfigDict(arbitrary_types_allowed=True)
+    model: str = ''
+    i1: int
+    i2: int
+    accuracy: str | None = None
+    sn: int | None = None # номинальная вторичная нагрузка, ВА
+    r2: float = 4 #активное сопротивление вторичной обмотки
+    x2: float = 0 #реактивное сопротивление вторичной обмотки
+    cos: float = 0.8 #косинус номинального значения угла сопротивления нагрузки
+    s2ta: float | None = None #нагрузка на ТТ, обусловленная сопротивлением его вторичной обмотки R2ТТ (ориентировочно принимается 0,2·Sном)
+    imax: float | None = None #ток нагрузки максимальный протекающий через ТТ. Если на задан то принимаем номинальный ток ТТ
+    kn: int | None = None # номинальная предельная кратность
+    kpk: Callable | None = None #функция возвращающая значение предельной кратности и принимающая фактическое сопротивление нагрузки токовых цепей
+    k_circuit: float = 1 #коэффициент схемы соединений токовых цепей
+    kr: float = 0.86 #коэффициент остаточной намагниченности
+    kprn: float = 1 #коэффициент переходного режима номинальный (для ТТ класса Р равен 1 согласно примечания к Б.39 ПНСТ 283-2018)
+    i_term: float | None = None #термическая стойкость ТТ
+    i_din: float | None = None #динамическая стойкость ТТ
+    ikz_max: int | None = None # short circuit current in A
+    isz_max: float | None = None # short circuit current in A
+    p: float = 0.0175 #удельное сопротивление
+    length: float #длина кабеля токовых цепей в метрах
+    s: float = 2.5 #сечение жилы кабеля токовых цепей в мм квадратных
+    r_cont: float = 0.1 #сопротивление соединительных контактов
+    loads: list | None = None
+    cases: list[CaseSC] | None = None
+    ka: float = 1.4 #коэффициент, учитывающий влияние апериодической составляющей тока КЗ (1,4 – для защит без выдержки времени, 1 – для защит с выдержкой времени)
+    alfa: float = 0.9 #коэффициент, учитывающий возможное отклонение действительной характеристики данного ТТ от типовой
+    ku: float = 1.85 #ударный коэффициент (для расчёта напряжения на зажимах ТТ)
+    v: float = 0 #фаза периодической составляющей в момент КЗ в радианах
+    vach: Characteristic | None = None # класс характеристик применительно для ВАХ
 
     @field_validator('accuracy')
     @classmethod
     def validate_accuracy(cls, v: str | None) -> str | None:
         if v is None:
             return v
-        values = ('10P', '5P', '10PR', '5PR', '0.5', '0.5S', '0.2', '0.2S')
+        values = ('10P', '5P', '10PR', '5PR', '0.5', '0.5S', '0.2', '0.2S', '1')
         if v in values:
             return v
         raise ValueError(f'accuracy must be {", ".join(values)}')
@@ -102,6 +138,20 @@ class CT(Element):
                   'выполняться условие' + te.m(r'I_{H1} \geq \frac{I_{\text{кз.макс.}}}{40}'))
         te.p(te.m(r'I_{\text{кз.макс}}')+' - максимально возможное значение тока КЗ проходящего через обмотку '
                   'рассматриваемого ТТ')
+        te.h3('Проверка по термической стойкости')
+        te.p('Проверка трансформатора тока на термическую стойкость при КЗ заключается в сравнении найденного '
+             'при расчетных условиях интеграла Джоуля Вкз с его допустимым для проверяемого ТТ значением Втер.доп. '
+             'Трансформатор тока удовлетворяет условию  термической стойкости, если выполняется следующее условие:')
+        te.math(r'B_{\text{ТЕР.ДОП}} = I_{\text{ТЕР}}^2 \cdot 1\text{сек}')
+        te.math(r'B_{\text{КЗ}} = I_{\text{КЗ}}^2 \cdot t_{\text{ОТКЛ}}')
+        te.math(r'B_{\text{КЗ}} \leq B_{\text{ТЕР.ДОП}}')
+
+        te.h3('Проверка по динамической стойкости')
+        te.p('Проверка трансформатора тока на динамическую стойкость при КЗ заключается в сравнении тока динамической '
+             'стойкости с ударным током короткого замыкания.'
+             'Трансформатор тока удовлетворяет условию  термической стойкости, если выполняется следующее условие:')
+        te.math(r'I_{\text{ДИН}} \geq \chi \cdot \sqrt{2} \cdot I_{\text{КЗ}}')
+        te.ul(f'где {te.m(r"\chi")} - ударный коэффициент')
 
         te.h3('Расчет мощности обмоток трансформаторов тока')
         te.p('Суммарное сопротивление нагрузки составляет: ')
@@ -425,29 +475,46 @@ class CT(Element):
         a = a * (1 - self.kr)
         last_k_p_r = 0
         last_t = 0
-        for t in range(0, 1000):
+        for t in range(0, 10000):
             t /= 1000
             k_p_r = self.k_p_r(t, casesc, kz3ph) if gost else self.k_p_rPNST(t, casesc, kz3ph)
             if a < k_p_r:
                 return ((t - last_t) / (k_p_r - last_k_p_r) * (a - last_k_p_r) + last_t) * 1000
             last_k_p_r = k_p_r
             last_t = t
+        print('error')
 
-    def check_table(self):
+    def check_table(self, t: float):
+        '''
+        :param t: time of protection plus time open CB
+        '''
         i_din = self.i_din if self.i_din else 'нет'
-        yield self.name, self.model, self.accuracy, self.i_term, i_din, self.ikz_max
+        yield (self.name, self.model, self.i_term, i_din, f'{self.i_term**2:.2f}', f'{self.ikz_max / 1000:.2f}', t,
+               f'{(self.ikz_max / 1000) ** 2 * t:.2f}', self.ku,
+               f'{self.ikz_max / 1000 * math.sqrt(2) * self.ku:.2f}')
         z_nagr3ph = self.z_nagr3ph
-        yield (self.name, self.sn, f'{self.r_ustr:.2f}', self.length, self.s, f'{z_nagr3ph:.2f}',
+        yield (self.name, self.accuracy, self.sn, f'{self.r_ustr:.2f}', self.length, self.s, f'{z_nagr3ph:.2f}',
                f'{self.s_nagr3ph:.2f}')
-        if 'P' in self.accuracy or 'PR' in self.accuracy:
-            data = (f'{self.kn_real3ph:.2f}', self.isz_max, f'{self.isz_max * 1.1:.0f}',
-                    f'{self.isz_max * 1.1 / self.i1:.2f}')
+        if self.kn:
+            if ('P' in self.accuracy or 'PR' in self.accuracy) or self.accuracy == '1':
+                data = (f'{self.kn_real3ph:.2f}', self.isz_max, f'{self.isz_max * 1.1:.0f}',
+                        f'{self.isz_max * 1.1 / self.i1:.2f}')
+            else:
+                data = 'нет', 'нет', 'нет', 'нет'
+            yield (self.name, self.kn, self.r2, *data)
         else:
-            data = 'нет', 'нет', 'нет', 'нет'
-        yield (self.name, self.kn, self.r2, *data)
-        usc = self.ku * self.ikz_max * self.i2 / self.i1 * z_nagr3ph
-        yield self.name, f'{self.i1}/{self.i2}', f'{self.imax:.0f}', f'{z_nagr3ph:.2f}', self.ikz_max, f'{usc:.1f}'
+            yield None
+        if self.vach:
+            i2sc = self.ikz_max / self.i1 * self.i2
+            u2sc = i2sc * (self.z_nagr3ph + self.r2)
+            i0sc = self.vach.get_a_by_b(u2sc)
+            yield self.name, i2sc, self.z_nagr3ph, u2sc, f'{i0sc:.3f}', f'{i0sc / i2sc * 100:.2f}'
+        else:
+            yield None
 
+        usc = self.ku * self.ikz_max * self.i2 / self.i1 * z_nagr3ph
+        yield (self.name, f'{self.i1}/{self.i2}', f'{self.imax:.0f}', f'{self.imax / self.i1 * 100:.0f}',
+               f'{z_nagr3ph:.2f}', self.ikz_max, f'{usc:.1f}')
 
     def check(self, te: TextEngine):
         te.h2(self.name)
@@ -616,6 +683,37 @@ class CT(Element):
             suffix = '(П3)'
         return f'{t:.2f}{suffix}'
 
+    def _graph(self, te: TextEngine, t_limit: int, casesc: CaseSC, suffix: str):
+        x = []
+        y = []
+        z = []
+        y1 = []
+        z1 = []
+        for tm in range(1, t_limit):
+            tm /= 1000
+            x.append(tm)
+            y.append(self.k_p_r(tm, casesc, True))
+            z.append(self.k_p_rPNST(tm, casesc, True))
+            if casesc.isc1:
+                y1.append(self.k_p_r(tm, casesc, False))
+                z1.append(self.k_p_rPNST(tm, casesc, False))
+        fig, ax = plt.subplots()
+        ax.plot(x, y, label='Кп.р. ГОСТ 3-х ф.КЗ')
+        ax.plot(x, z, label='Кп.р. ПНСТ 3-х ф.КЗ')
+        if casesc.isc1:
+            ax.plot(x, y1, label='Кп.р. ГОСТ 1-х ф.КЗ')
+            ax.plot(x, z1, label='Кп.р. ПНСТ 1-х ф.КЗ')
+        ax.legend()
+        ax.grid()
+        namefile = f'{self.name}_{casesc.name}'
+        namefile = namefile.replace(' ', '_')
+        namefile = namefile.replace('.', '_')
+        namefile = namefile.replace('(', '_')
+        namefile = namefile.replace(')', '_')
+        plt.savefig(namefile + suffix + '.png')
+        te.image(namefile + suffix + '.png', 'Графики Кп.р.(t)', 500)
+        plt.close()
+
     def time_to_saturation(self, te: TextEngine, casesc: CaseSC, t3ph, t3phkr, t1ph ='П0', t1phkr ='П0'):
         te.h2(f'Трансформатор тока {self.name}')
         te.p(f'Режим: {casesc.name}')
@@ -695,55 +793,6 @@ class CT(Element):
         te.table_row('sinPHIsc3', self.sin_nagr3ph, '-', 'Синус угла вторичной нагрузки ТТ при трёхфазном КЗ')
         te.table_row('Acs3kr', f'{a3ph * (1 - self.kr):.2f}', '-', 'Параметр режима при трёхфазном КЗ')
 
-        x = []
-        y = []
-        z = []
-        y1 = []
-        z1 = []
-        for tm in range(1, 200):
-            tm /= 1000
-            x.append(tm)
-            y.append(self.k_p_r(tm, casesc, True))
-            z.append(self.k_p_rPNST(tm, casesc, True))
-            y1.append(self.k_p_r(tm, casesc, False))
-            z1.append(self.k_p_rPNST(tm, casesc, False))
-        fig, ax = plt.subplots()
-        ax.plot(x, y, label='Кп.р. ГОСТ 3-х ф.КЗ')
-        ax.plot(x, z, label='Кп.р. ПНСТ 3-х ф.КЗ')
-        ax.plot(x, y1, label='Кп.р. ГОСТ 1-х ф.КЗ')
-        ax.plot(x, z1, label='Кп.р. ПНСТ 1-х ф.КЗ')
-        ax.legend()
-        ax.grid()
-        num = random.randint(1, 9999999)
-        plt.savefig(f'{num}.png')
-        te.image(f'{num}.png', 'Графики Кп.р.(t)', 500)
-
-        x = []
-        y = []
-        z = []
-        y1 = []
-        z1 = []
-        for tm in range(1, 25):
-            tm /= 1000
-            x.append(tm)
-            y.append(self.k_p_r(tm, casesc, True))
-            z.append(self.k_p_rPNST(tm, casesc, True))
-            if casesc.isc1:
-                y1.append(self.k_p_r(tm, casesc, False))
-                z1.append(self.k_p_rPNST(tm, casesc, False))
-        fig, ax = plt.subplots()
-        ax.plot(x, y, label='Кп.р. ГОСТ')
-        ax.plot(x, z, label='Кп.р. ПНСТ')
-        if casesc.isc1:
-            ax.plot(x, y1, label='Кп.р. ГОСТ 1-х ф.КЗ')
-            ax.plot(x, z1, label='Кп.р. ПНСТ 1-х ф.КЗ')
-        ax.legend()
-        ax.grid()
-        num = random.randint(1, 9999999)
-        plt.savefig(f'{num}.png')
-        te.image(f'{num}.png', 'Графики Кп.р.(t)', 500)
-        plt.close()
-
         kr = self.kr
         self.kr = 0
         te.table_name('Результаты расчёта в соответствии с ГОСТ Р 58669-2019 при однофазном КЗ')
@@ -782,7 +831,8 @@ class CT(Element):
                 print(e)
                 t1 = 'П3'
             t2 = t3ph
-            t3 = f'{self.t_sat_from_k_p_r_by_a(casesc, True, True):.2f}'
+            t_graph_big = self.t_sat_from_k_p_r_by_a(casesc, True, True)
+            t3 = f'{t_graph_big:.2f}'
         else:
             t1 = t2 = t3 = 'П1'
         te.table_row('При отсутствии остаточной намагниченности', t1, t2, t3)
@@ -794,7 +844,8 @@ class CT(Element):
                 print(e)
                 t1 = 'П3'
             t2 = t3phkr
-            t3 = f'{self.t_sat_from_k_p_r_by_a(casesc, True, True):.2f}'
+            t_graph_small = self.t_sat_from_k_p_r_by_a(casesc, True, True)
+            t3 = f'{t_graph_small:.2f}'
         else:
             t1 = t2 = t3 = 'П1'
         te.table_row(f'При наличии остаточной намагниченности {self.kr * 100}%', t1, t2, t3)
@@ -850,8 +901,11 @@ class CT(Element):
             t1 = t3 = 'П1'
         te.table_row(f'При наличии остаточной намагниченности {self.kr * 100}%', t1, t3, t3)
 
+        self._graph(te, int(t_graph_big * 1.2), casesc, '_big')
+        self._graph(te, int(t_graph_small * 1.2), casesc, '_small')
+
     def row_data(self):
-        return self.name, self.model, f'{self.i1}/{self.i2}', self.accuracy, self.sn, self.kn
+        return self.name, self.model, f'{self.i1}/{self.i2}', self.accuracy, self.sn, self.kn, self.i_term, self.i_din
 
 class CTs(Element):
     cts: list[CT]
@@ -927,31 +981,52 @@ class CTs(Element):
         for ct in self.cts:
             ct.check(te)
 
-    def check_table(self, te: TextEngine):
+    def check_table(self, te: TextEngine, t: list[float]):
+        '''
+        :param t: list of time protection
+        '''
         te.h1('Расчётная проверка трансформаторов тока')
         self.cts[0].metods(te)
         te.h2('Проверка трансформаторов тока')
-        gens_data = [ct.check_table() for ct in self.cts]
+        gens_data = [ct.check_table(t[num]) for num, ct in enumerate(self.cts)]
         te.table_name('Проверка на стойкость к токам КЗ')
-        te.table_head('Место установки', 'Модель', 'Класс точности', 'Односекундный ток термической стойкости, кА',
-                      'Ток динамической стойкости, кА', 'Ток КЗ, А')
+        te.table_head('Место установки', 'Модель', 'Односекундный ток термической стойкости, кА',
+                      'Ток динамической стойкости, кА', 'Номинальный тепловой импульс, кА²·сек', 'Ток КЗ, кА',
+                      'Время отключения, сек', 'Тепловой импульс, кА²·сек', 'Ударный коэффициент', 'Ударный ток КЗ, кА')
         for gen in gens_data:
             te.table_row(*next(gen))
         te.table_name('Проверка мощности обмоток')
-        te.table_head('Место установки', 'Мощность обмотки, ВА', 'Сопротивление приборов, Ом', 'Длина кабеля, м',
+        te.table_head('Место установки', 'Класс точности', 'Мощность обмотки, ВА', 'Сопротивление приборов, Ом', 'Длина кабеля, м',
                       'Сечение жилы кабеля, мм.кв', 'Полное сопротивление нагрузки, Ом', 'Мощность фактической нагрузки, ВА')
         for gen in gens_data:
             te.table_row(*next(gen))
-        te.table_name('Проверка на 10% погрешность')
-        te.table_head('Место установки', 'Кп (Fs)', 'Сопротивление вторичной обмотки, Ом', 'K10доп',
-                      'Ток срабатывания защиты максимальный, А', 'Iмакс.расч, А', 'Kмакс.расч')
+
+        rows = []
         for gen in gens_data:
             data = next(gen)
             if data:
-                te.table_row(*data)
+                rows.append(data)
+        if rows:
+            te.table_name('Проверка на 10% погрешность')
+            te.table_head('Место установки', 'Кп (Fs)', 'Сопротивление вторичной обмотки, Ом', 'K10доп',
+                          'Ток срабатывания защиты максимальный, А', 'Iмакс.расч, А', 'Kмакс.рас')
+            for row in rows:
+                te.table_row(*row)
+
+        rows = []
+        for gen in gens_data:
+            data = next(gen)
+            if data:
+                rows.append(data)
+        if rows:
+            te.table_name('Проверка на 10% погрешность по реальной ВАХ')
+            te.table_head('Место установки', 'Ток вторичный КЗ, А', 'Сопротивление нагрузки, Ом',
+                          'Напряжение на нагрузке, В', 'Ток намагничивания по ВАХ, А', 'Погрешность, %')
+            for row in rows:
+                te.table_row(*row)
         te.table_name('Проверка по току нагрузки и условию отсутствия опасных перенапряжений во вторичных цепях ТТ')
-        te.table_head('Место установки', 'Ктт', 'Ток нагрузки максимальный, А', 'Полное сопротивление нагрузки, Ом', 'Iмакс.внутр, А',
-                      'Напряжение, В')
+        te.table_head('Место установки', 'Ктт', 'Ток нагрузки максимальный, А', 'Загрузка, %', 'Полное сопротивление нагрузки, Ом',
+                      'Iмакс.кз, А', 'Напряжение, В')
         for gen in gens_data:
             data = next(gen)
             if data:
@@ -961,6 +1036,7 @@ class CTs(Element):
 
     def data(self, te: TextEngine):
         te.table_name('Выбранные трансформаторы тока с параметрами обмоток')
-        te.table_head('Место установки', 'Марка', 'Ктт', 'Класс точности', 'Мощность обмотки, ВА', 'Kп (Fs)')
+        te.table_head('Место установки', 'Марка', 'Ктт', 'Класс точности', 'Мощность обмотки, ВА', 'Kп (Fs)',
+                      'Односекундный ток термической стойкости, кА', 'Ток динамической стойкости, кА')
         for ct in self.cts:
             te.table_row(*ct.row_data())
