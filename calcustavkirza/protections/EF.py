@@ -13,7 +13,7 @@ class EF(Element):
     '''
     R: int | float | None = None
     Kch: int = 1.5
-    Kn: float = 1.1
+    Kn: float = 1.2 # to take into account the capacity of transformers and motors, we take a coefficient equal to 1.2
     Ul: float = 10
     isz: float
     isz_note: str = ''

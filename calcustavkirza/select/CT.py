@@ -371,12 +371,12 @@ class CT(Element):
             return
         check = self._a(casesc, kz3ph) * (1 - self.kr)
         if check and (check <= 1):
-            raise MethodNotReliable(f'Условие 8 ГОСТ Р 58669—2019 и Б.49 ПНСТ 283-2018 не выполняется. '
-                             f'Формулу 6 ГОСТ Р 58669—2019 и Б.47 ПНСТ 283-2018 нельзя применять, '
+            raise MethodNotReliable(f'Условие 8 ГОСТ Р 58669—2019 не выполняется. '
+                             f'Формулу 6 ГОСТ Р 58669—2019 нельзя применять, '
                              f'левая часть условия 8 равна {check} для {self.name}')
         sat = self._saturation(casesc, kz3ph)
         if sat == False:
-            raise NotSaturation(f'Условие 7 ГОСТ Р 58669—2019 и Б.48 ПНСТ 283-2018 не выполняется. '
+            raise NotSaturation(f'Условие 7 ГОСТ Р 58669—2019 не выполняется. '
                              f'Насыщение не происходит для {self.name}')
         w = 2 * math.pi * 50
         t_eq = casesc.t_eq3ph if kz3ph else casesc.t_eq1ph
@@ -448,25 +448,10 @@ class CT(Element):
         sum_i += trig2
         return sum_i
 
-    def k_p_rPNST(self, t: float, casesc: CaseSC, kz3ph: bool = True):
-        '''
-        Метод для построения кривой зависимости Кп.р. от времени согласно Б.42 (Б.51) ПНСТ 283-2018
-        :param t: время в сек
-        :param kz3ph: если флаг True то расчёт производится для трёхфазных КЗ а если False то для однофазных
-        :return:
-        '''
-        if not kz3ph and not casesc.isc1:
-            return
-        w = 100 * math.pi
-        t_eq = casesc.t_eq3ph if kz3ph else casesc.t_eq1ph
-        t_eq /= 1000
-        return w * t_eq * (1 - math.exp(- t / t_eq)) - math.sin(w * t)
-
-    def t_sat_from_k_p_r_by_a(self, casesc: CaseSC, kz3ph: bool = True, gost: bool = True):
+    def t_sat_from_k_p_r_by_a(self, casesc: CaseSC, kz3ph: bool = True):
         '''
         Метод ищет на графике Кп.р. значение времени до насыщения соответствующее параметру режима А
-        :param kz3ph:
-        :param gost:
+        :param kz3ph: True if short circuit is 3 phase else False
         :return: время в мс
         '''
         if not kz3ph and not casesc.isc1:
@@ -477,7 +462,7 @@ class CT(Element):
         last_t = 0
         for t in range(0, 10000):
             t /= 1000
-            k_p_r = self.k_p_r(t, casesc, kz3ph) if gost else self.k_p_rPNST(t, casesc, kz3ph)
+            k_p_r = self.k_p_r(t, casesc, kz3ph)
             if a < k_p_r:
                 return ((t - last_t) / (k_p_r - last_k_p_r) * (a - last_k_p_r) + last_t) * 1000
             last_k_p_r = k_p_r
@@ -686,23 +671,17 @@ class CT(Element):
     def _graph(self, te: TextEngine, t_limit: int, casesc: CaseSC, suffix: str):
         x = []
         y = []
-        z = []
         y1 = []
-        z1 = []
         for tm in range(1, t_limit):
             tm /= 1000
             x.append(tm)
             y.append(self.k_p_r(tm, casesc, True))
-            z.append(self.k_p_rPNST(tm, casesc, True))
             if casesc.isc1:
                 y1.append(self.k_p_r(tm, casesc, False))
-                z1.append(self.k_p_rPNST(tm, casesc, False))
         fig, ax = plt.subplots()
         ax.plot(x, y, label='Кп.р. ГОСТ 3-х ф.КЗ')
-        ax.plot(x, z, label='Кп.р. ПНСТ 3-х ф.КЗ')
         if casesc.isc1:
             ax.plot(x, y1, label='Кп.р. ГОСТ 1-х ф.КЗ')
-            ax.plot(x, z1, label='Кп.р. ПНСТ 1-х ф.КЗ')
         ax.legend()
         ax.grid()
         namefile = f'{self.name}_{casesc.name}'
@@ -802,7 +781,7 @@ class CT(Element):
             if self.saturation1ph(casesc):
                 t1 = self._t2str(self.t_saturation1ph(casesc))
                 t2 = t1ph
-                t3 = f'{self.t_sat_from_k_p_r_by_a(casesc, False, True):.2f}'
+                t3 = f'{self.t_sat_from_k_p_r_by_a(casesc, False):.2f}'
             else:
                 t1 = t2 = t3 = 'П1'
         else:
@@ -813,7 +792,7 @@ class CT(Element):
             if self.saturation1ph(casesc):
                 t1 = self._t2str(self.t_saturation1ph(casesc))
                 t2 = t1phkr
-                t3 = f'{self.t_sat_from_k_p_r_by_a(casesc, False, True):.2f}'
+                t3 = f'{self.t_sat_from_k_p_r_by_a(casesc, False):.2f}'
             else:
                 t1 = t2 = 'П1'
         else:
@@ -831,7 +810,7 @@ class CT(Element):
                 print(e)
                 t1 = 'П3'
             t2 = t3ph
-            t_graph_big = self.t_sat_from_k_p_r_by_a(casesc, True, True)
+            t_graph_big = self.t_sat_from_k_p_r_by_a(casesc, True)
             t3 = f'{t_graph_big:.2f}'
         else:
             t1 = t2 = t3 = 'П1'
@@ -844,62 +823,11 @@ class CT(Element):
                 print(e)
                 t1 = 'П3'
             t2 = t3phkr
-            t_graph_small = self.t_sat_from_k_p_r_by_a(casesc, True, True)
+            t_graph_small = self.t_sat_from_k_p_r_by_a(casesc, True)
             t3 = f'{t_graph_small:.2f}'
         else:
             t1 = t2 = t3 = 'П1'
         te.table_row(f'При наличии остаточной намагниченности {self.kr * 100}%', t1, t2, t3)
-
-        te.table_name('Результаты расчёта в соответствии с ПНСТ 283-2018 при однофазном КЗ')
-        te.table_head('Условия по остаточной намагниченности', 'Аналитический метод',
-                      'Графический метод по паспортным данным (Тр.экв)', 'Графический метод по паспортным данным (ΣI)')
-        self.kr = 0
-        if casesc.isc1:
-            if self.saturation1ph(casesc):
-                t1 = self._t2str(self.t_saturation1ph(casesc))
-                t3 = f'{self.t_sat_from_k_p_r_by_a(casesc, False, False):.2f}'
-            else:
-                t1 = t3 = 'П1'
-        else:
-            t1 = t3 = 'П0'
-        te.table_row('При отсутствии остаточной намагниченности', t1, t3, t3)
-
-        self.kr = kr
-        if casesc.isc1:
-            if self.saturation1ph(casesc):
-                t1 = self._t2str(self.t_saturation1ph(casesc))
-                t3 = f'{self.t_sat_from_k_p_r_by_a(casesc, False, False):.2f}'
-            else:
-                t1 = t3 = 'П1'
-        else:
-            t1 = t3 = 'П0'
-        te.table_row(f'При наличии остаточной намагниченности {self.kr * 100}%', t1, t3, t3)
-
-        te.table_name('Результаты расчёта в соответствии с ПНСТ 283-2018 при трёхфазном КЗ')
-        te.table_head('Условия по остаточной намагниченности', 'Аналитический метод',
-                      'Графический метод по паспортным данным (Тр.экв)', 'Графический метод по паспортным данным (ΣI)')
-        self.kr = 0
-        if self.saturation3ph(casesc):
-            try:
-                t1 = self._t2str(self.t_saturation3ph(casesc))
-            except MethodNotReliable as e:
-                print(e)
-                t1 = 'П3'
-            t3 = f'{self.t_sat_from_k_p_r_by_a(casesc, True, False):.2f}'
-        else:
-            t1 = t3 = 'П1'
-        te.table_row('При отсутствии остаточной намагниченности', t1, t3, t3)
-        self.kr = kr
-        if self.saturation3ph(casesc):
-            try:
-                t1 = self._t2str(self.t_saturation3ph(casesc))
-            except MethodNotReliable as e:
-                print(e)
-                t1 = 'П3'
-            t3 = f'{self.t_sat_from_k_p_r_by_a(casesc, True, False):.2f}'
-        else:
-            t1 = t3 = 'П1'
-        te.table_row(f'При наличии остаточной намагниченности {self.kr * 100}%', t1, t3, t3)
 
         self._graph(te, int(t_graph_big * 1.2), casesc, '_big')
         self._graph(te, int(t_graph_small * 1.2), casesc, '_small')
@@ -956,7 +884,7 @@ class CTs(Element):
         :return:
         '''
         te.h1('Определение времени до насыщения ТТ')
-        te.p('Расчет производится в соответствии с ГОСТ Р 58669-2019 и ПНСТ 283-2018.')
+        te.p('Расчет производится в соответствии с ГОСТ Р 58669-2019')
         te.p('При оформлении результатов расчета приняты следующие условные обозначения:')
         te.ul('Столбец Tр.экв - результаты расчета (времени до насыщения) при использовании эквивалентной постоянной времени затухания свободной апериодической составляющей тока, затухающей по экспоненциальному закону, которой заменяют сумму свободных апериодических составляющих, имеющих неодинаковые начальные значения и постоянные времени затухания.')
         te.ul('Столбец ∑I - результаты расчета (времени до насыщения) по сумме воздействий апериодических составляющих токов в отдельных ветвях (без использования Tр.экв).')

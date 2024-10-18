@@ -59,3 +59,7 @@ class ImbalanceSVG(Element):
                      f'режима), А', te.m(r'I_{\text{СР.СИГН}}'), self.isz_alarm)
         te.table_row(f'Время срабатывания защиты на отключение (требуется уточнение на этапе наладки по '
                      f'результатам измерений для отстройки от переходного режима), с', 'tср.сигн', self.t_alarm)
+
+    def table_settings(self, te: TextEngine):
+        te.table_row(self.name, f'{self.isz} A', self.t, self.isz_note)
+        te.table_row(self.name, f'{self.isz_alarm} A', self.t_alarm, self.isz_note)

@@ -15,8 +15,8 @@ class Characteristic:
     def addy(self, y: float, value: float):
         self.y.append((y, value))
 
-    def addp(self, x: int, y: int):
-        self.curve.append((x, y))
+    def addp(self, a: int, b: int):
+        self.curve.append((a, b))
 
     @staticmethod
     def _approximate(c, collect):
@@ -33,6 +33,16 @@ class Characteristic:
             vy = self._approximate(y, self.y)
             res.append((vx, vy))
         return res
+
+    def get_a_by_b(self, b):
+        '''
+        Возвращает значение по оси ординат на графике curve соответствующий значению по оси абсцисс b
+        '''
+        for a_, b_ in self.curve:
+            if b <= b_:
+                return (a_ - last_a) / (b_ - last_b) * (b - last_b) + last_a
+            last_a = a_
+            last_b = b_
 
     def log10(self, c1: float, v1: float, c2: float, v2: float):
         '''

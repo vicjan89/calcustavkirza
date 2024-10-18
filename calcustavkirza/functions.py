@@ -4,8 +4,6 @@ import cmath
 import os
 
 from store.store import JsonStorage
-
-
 import pandapower as pp
 import numpy as np
 import matplotlib.pyplot as plt
@@ -350,3 +348,18 @@ def charact_IEC60255_151type(inom, ir, tr, type: str):
         i = i / inom / ir
         return charact_IEC60255_151(ir, tr, k, c, a, i)
     return charact
+
+def abs_complex(value: complex) -> complex:
+    return complex(abs(value.real), abs(value.imag))
+
+
+def complex2polar_str(value: complex) -> str:
+    return f'{abs(value):.3f} {math.degrees(cmath.phase(value)):.2f}°'
+
+
+def e_eq_pu(e: list[float], x: list[complex | float]) -> float:
+    ey = sum([e_ / abs(x[i]) for i, e_ in enumerate(e)])
+    return ey / sum([1 / abs(x_) for x_ in x])
+
+def parallel_z(z: list[float | complex]) -> float | complex:
+    return 1 / sum([1/z_ for z_ in z])

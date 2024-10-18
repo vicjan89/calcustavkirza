@@ -5,20 +5,26 @@ from calcustavkirza.classes import Element
 
 
 class LZSH(Element):
+    '''
+    :param isz: ток срабатывания
+    :type isz: float
+    :param i_kz_min: митимальный ток КЗ для проверки чувтсвительности
+    :type i_kz_min: float
+    :param t: время срабатывания
+    :type t: float
+    '''
     isz: float
     ikz_otstr: float | None = None
     ikz_otstr_note: str = ''
     i_kz_min: float
     t: float | None = None
-    t_note: str = 'отключение'
+    t_note: str = ''
     index_ct: int | None = None
     k: float | None = None
     Kn: float = 1.1
     Kv: float = 0.95
     Ksz: float = 1.3 # коэффициент самозапуска
     irmax: float | None = None #ток нагрузки максимальный
-    bl: bool = False
-    time_prot: bool = True
     name: str = 'Логическая защита шин'
     name_short: str = 'ЛЗШ'
 
@@ -28,16 +34,13 @@ class LZSH(Element):
         te.table_name(self.name)
         te.table_head('Наименование величины', 'Расчётная формула, обозначение', 'Результат расчёта', widths=(3,2,1))
         if self.irmax:
-            Irmax = self.irmax
-        else:
-            Irmax = self.net.res_pf.get_max(self.pris.loc)
-        iszpredv = self.Kn/self.Kv*self.Ksz*Irmax
-        te.table_row('Первичный ток срабатывания защиты по отстройке от тока нагрузки, А',
-                          'Iсз≥Кн / Кв·Ксзп·Iрмакс', f'{iszpredv:.2f}')
-        te.table_row('Коэффициент надёжности', 'Кн', self.Kn)
-        te.table_row('Коэффициент возврата', 'Кв', self.Kv)
-        te.table_row('Коэффициент самозапуска', 'Ксзп', self.Ksz)
-        te.table_row('Максимальный рабочий ток или номинальный ток ТТ, А', 'Iрмакс', f'{Irmax:.2f}')
+            iszpredv = self.Kn/self.Kv*self.Ksz*self.irmax
+            te.table_row('Первичный ток срабатывания защиты по отстройке от тока нагрузки, А',
+                              'Iсз≥Кн / Кв·Ксзп·Iрмакс', f'{iszpredv:.2f}')
+            te.table_row('Коэффициент надёжности', 'Кн', self.Kn)
+            te.table_row('Коэффициент возврата', 'Кв', self.Kv)
+            te.table_row('Коэффициент самозапуска', 'Ксзп', self.Ksz)
+            te.table_row('Максимальный рабочий ток или номинальный ток ТТ, А', 'Iрмакс', f'{self.irmax:.2f}')
         if self.ikz_otstr:
             te.table_row(f'Первичный ток срабатывания защиты по отстройке от тока {self.ikz_otstr_note}, А',
                               'Iсз≥Кн·Iкз.отстр', f'1.1·{self.ikz_otstr} = {1.1*self.ikz_otstr:.2f}')
@@ -51,18 +54,14 @@ class LZSH(Element):
             te.table_row('Время срабатывания защиты, с', 'tср', self.t)
         if self.k:
             te.table_row(f'Коэффициент, характеризующий вид зависимой характеристики', 'k', self.k)
-        if self.bl:
-            te.table_row('Блокировка вышестоящего ЛЗШ без выдержки времени', 'I', self.isz)
 
-    def table_settings(self):
+    def table_settings(self, te: TextEngine):
         t_str = ''
         if self.t:
             t_str += str(self.t)
         if self.k:
             t_str += f'K={self.k} (зависимая время-токовая характеристика)'
-        te.table_row(self.name, f'{self.isz} A', t_str, 'При пуске блокирует вышестоящую ЛЗШ (выполнить отдельным '
-                                                             'токовым органом, не блокируемым блокирующими '
-                                                             'органами)' if self.bl else '')
+        te.table_row(self.name, f'{self.isz} A', t_str, self.t_note)
 
     def table_settings_bmz_data(self):
         res = [self.isz]

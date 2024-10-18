@@ -6,9 +6,16 @@ from calcustavkirza.classes import Element
 class BFP(Element):
     '''
     Класс для описания УРОВ
+    isz: float # ток срабатывания в амперах
+    t: float # время срабатывания
+    t_note: str = "отключение вышестоящего присоединения"
+    index_ct: int | None = None
+    time_prot: bool = False
+    name: str = 'Устройство резервирования отказа выключателя'
+    name_short: str = 'УРОВ'
     '''
     isz: float # ток срабатывания в амперах
-    t: float
+    t: float # время срабатывания
     t_note: str = "отключение вышестоящего присоединения"
     index_ct: int | None = None
     time_prot: bool = False

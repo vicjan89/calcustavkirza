@@ -112,4 +112,4 @@ class Calc(Element):
 
 
         te.p('Расчёты выполнены с применением языка программирования Python и библиотеки PandaPower(© Copyright '
-                  '2016 - 2024 by Fraunhofer IEE and University of Kassel.)')
+                  '2016 - 2024 by Fraunhofer IEE and University of Kassel) распространяемой по свободной лицензии BSD.')

@@ -18,7 +18,7 @@ class Cable(Element):
         ith_screen = self.ith_screen if self.ith_screen else 'нет'
         return self.name, self.brand, self.s, s_screen, self.ith, ith_screen
 
-    def check_ith(self, isc: float, t: float, isc_screen: float, t_screen: float):
+    def check_ith(self, isc: float, t: float, isc_screen: float | None = None, t_screen: float | None = None):
         '''
         Проверяет кабель на термическую стойкость к токам КЗ
         :param te:
@@ -29,10 +29,13 @@ class Cable(Element):
         :return:
         '''
         if self.ith_screen:
-            ith_screen_real = self.ith_screen / math.sqrt(t_screen)
+            ith_screen_real = f'{self.ith_screen / math.sqrt(t_screen):.0f}'
+            isc_screen = f'{isc_screen:.0f}'
         else:
             ith_screen_real = 'нет'
-        return self.name, isc, t, f'{self.ith / math.sqrt(t):.0f}', f'{isc_screen:.0f}', t_screen, f'{ith_screen_real:.0f}'
+            isc_screen = 'нет'
+            t_screen = 'нет'
+        return self.name, isc, t, f'{self.ith / math.sqrt(t):.0f}', isc_screen, t_screen, ith_screen_real
 
 class Cables(Element):
     cables: list[Cable]
@@ -42,7 +45,7 @@ class Cables(Element):
         te.h1('Проверка кабелей на термическую стойкость')
         te.table_name('Паспортные данные кабелей')
         te.table_head('Место подключения', 'Марка', 'Сечение жилы, мм.кв.', 'Сечение экрана, мм.кв.',
-                      'Допустимый ток односекундного КЗ, А', 'Допустимый тока односекундного КЗ экрана, А')
+                      'Допустимый ток односекундного КЗ, А', 'Допустимый ток односекундного КЗ экрана, А')
         for cable in self.cables:
             te.table_row(*cable.passort_data())
         te.p('При отличии времени отключения максимального тока от одной секунды допустимый ток пересчитывается по '

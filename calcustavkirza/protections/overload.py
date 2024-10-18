@@ -7,6 +7,17 @@ from textengines.interfaces import TextEngine
 from calcustavkirza.classes import Element
 
 class OverLoad(Element):
+    '''
+    isz: float
+    index_ct: int | None = None
+    t: float
+    t_note: str = 'на сигнал'
+    Kn: float = 1.1
+    sn: int #мощность в кВА
+    un: float
+    name: str = 'Перегрузка'
+    name_short: str = 'Перегрузка'
+    '''
     isz: float
     index_ct: int | None = None
     t: float

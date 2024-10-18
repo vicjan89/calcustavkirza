@@ -5,6 +5,34 @@ from calcustavkirza.classes import Element
 
 
 class MTZ(Element):
+    '''
+    i_kz_end_index: int | None = None #index bus in end protected element
+    i_kz_min: float | None = None #use if index is none
+    i_kz_min_note: str = ''
+    index_kz_min_res: int | None = None
+    i_kz_min_res: float | None = None
+    i_kz_min_res_note: str = ''
+    irmax: float | None = None
+    kn: float = 1.1
+    kns: float = 1.1
+    Kv: float = 0.95
+    Ksz: float = 1.3 # коэффициент самозапуска
+    isz: int
+    isz_note: str = ''
+    index_ct: int | None = None
+    t: float | str | None = None
+    k: int | None = None # коэффициент кривой обратнозависимой характеристики
+    t_note: str  = ''
+    t_au: float | None = None
+    isz_posl: float | None = None
+    isz_posl_note: str = ''
+    isz_prev: float | None = None
+    isz_prev_note: str = ''
+    bl: bool = False
+    time_prot: bool = True
+    name: str = 'Максимальная токовая защита'
+    name_short: str = 'МТЗ'
+    '''
     i_kz_end_index: int | None = None #index bus in end protected element
     i_kz_min: float | None = None #use if index is none
     i_kz_min_note: str = ''
@@ -60,11 +88,12 @@ class MTZ(Element):
             i_kz_min = res_sc_min[str(self.i_kz_end_index)][1]
         else:
             i_kz_min = self.i_kz_min
-        k_ch = i_kz_min / self.isz
-        te.table_row('Проверка коэффициента чувствительности в основной зоне',
-                          'Кч=Iкзмин/Iсз >= 1.5', f'{k_ch:.2f}')
-        te.table_row(f'Минимальный ток КЗ в конце защищаемого участка приведенный к напряжению места установки '
-                          f'защиты', f'Iкзмин{self.i_kz_min_note}', f'{i_kz_min:.1f}')
+        if i_kz_min:
+            k_ch = i_kz_min / self.isz
+            te.table_row('Проверка коэффициента чувствительности в основной зоне',
+                              'Кч=Iкзмин/Iсз >= 1.5', f'{k_ch:.2f}')
+            te.table_row(f'Минимальный ток КЗ в конце защищаемого участка приведенный к напряжению места установки '
+                              f'защиты', f'Iкзмин{self.i_kz_min_note}', f'{i_kz_min:.1f}')
         if self.index_kz_min_res is not None:
             i_kz_min_res = res_sc_min[str(self.index_kz_min_res)][1]
         else:
@@ -81,22 +110,22 @@ class MTZ(Element):
                               'Кч=Iкзмин/Iсз >= 1.3', f'{k_ch_res:.2f}')
             te.table_row(f'Минимальный ток КЗ в конце зоны резервирования приведенный к напряжению места установки '
                               f'защиты, A', 'Iкзмин', f'{self.i_kz_min_res_note} {i_kz_min_res}')
-        if self.t:
-            te.table_row(f'Время срабатывания защиты по условию селективности, с {self.t_note}', 'tср', self.t)
+        if self.t is not None:
+            te.table_row(f'Время срабатывания защиты, с {self.t_note}', 'tср', self.t)
         if self.k:
             te.table_row(f'Коэффициент, характеризующий вид зависимой характеристики', 'k', self.k)
         if self.bl:
             te.table_row('Блокирует ЛЗШ без выдержки времени, с', 't', 0)
         if self.t_au:
             te.table_row('Время срабатывания защиты при автоматическом ускорении, с', 't АУ', self.t_au)
-        if k_ch < 1.5:
-            te.warning(f'Коэффициент чувствительности мал ({k_ch:.2f})')
+        if i_kz_min and (k_ch < 1.5):
+            self.add_warning(f'Коэффициент чувствительности мал ({k_ch:.2f})')
         if i_kz_min_res and k_ch_res < 1.3:
-            te.warning(f'Коэффициент чувствительности в зоне резервирования мал ({k_ch:.2f})')
+            self.add_warning(f'Коэффициент чувствительности в зоне резервирования мал ({k_ch:.2f})')
 
     def table_settings(self, te: TextEngine):
         t_str = ''
-        if self.t:
+        if self.t is not None:
             t_str += str(self.t)
         if self.k:
             t_str += f'K={self.k} (зависимая время-токовая характеристика)'
