@@ -11,17 +11,18 @@ from calcustavkirza.functions import create_from_charact, create_time_independen
 
 
 class QF(Element):
-    model: str #марка согласно каталога производителя
-    inom: int #номинальный ток
-    ir: float | None = None #уставка long-time защиты
+    model: str = '' # марка согласно каталога производителя
+    inom: int | None = None # номинальный ток
+    ir: float = 1. #уставка long-time защиты
     tr: float | None = None #уставка по времени long-time защиты
     isd: float | None = None #уставка short-time защиты если равен 0 то ступень выведена
     tsd: float | None = None #уставка по времени short-time защиты
     ii: float | None = None #уставка отсечки если равен 0 то ступень выведена
     icu: float | None = None #номинальная предельная отключающая способность кА
     ics: float | None = None #номинальная отключающая способность кА
-    ui: int | None = None #номинальное напряжение изоляции
-    ue: int | None = None #номинальное рабочее напряжение
+    ui: float | None = None #номинальное напряжение изоляции в кВ
+    ue: float | None = None #номинальное рабочее напряжение в кВ
+    rk: float = 0.0013 # переходное сопротивление контактов, Ом
 
     @property
     def ira(self):
@@ -63,15 +64,19 @@ class QF(Element):
         else:
             isda = '-'
             kchisd = '-'
-        te.table_row(self.name, ikzmin, self.ira, f'{ikzmin/self.ira*1000:.2f}', isda,
-                     kchisd, self.iia, f'{ikzmin/self.iia*1000:.2f}')
+        kchir = ikzmin / self.ira * 1000
+        kchii = ikzmin / self.iia * 1000
+        kch_enough = 'Да' if ((kchii >= 1.4 and self.inom < 100) or (kchii >= 1.25 and self.inom >=100)) and kchir >= 3 \
+            else 'Нет'
+        te.table_row(self.name, f'{ikzmin * 1000:.1f}', self.ira, f'{kchir:.2f}', isda,
+                     kchisd, self.iia, f'{kchii:.2f}', kch_enough)
 
 class QFs(Element):
     qfs: list[QF]
     u: list[float]
     inagr: list[float]
-    ikzmax: list[float]
-    ikzmin: list[float]
+    ikzmax: list[float] # ток кз в ка
+    ikzmin: list[float] # ток кз в ка
 
     def select(self, te: TextEngine):
         te.p('Выбор модульных автоматических выключателей производится по следующим условиям:')
@@ -87,13 +92,14 @@ class QFs(Element):
                       'Напряжение сети,кВ', 'Номинальное напряжение изоляции,кВ', 'Максимальный ток КЗ,кА',
                       'Номинальная отключающая способность,кА')
         for index, qf in enumerate(self.qfs):
-            qf.select(te, u=self.u[index], inagr=self.inagr[index], ikzmax=self.ikzmax[index])
+            qf.select(te, u=self.u[index], inagr=self.inagr[index], ikzmax=f'{self.ikzmax[index]:.3f}')
         te.p('Проверка чувствительности расцепителей автоматического выключателя осуществляется по результату расчёта '
              'коэффициента чувствительности:')
         te.math(r'K_{\text{ч}} = \frac{I_{\text{МИН.КЗ}}}{I_{\text{сраб.расцеп.}}}')
         te.p('Зчачения рассчитанных коэффициентов чувствительности должны соответствовать требованиям пункта 1.7.79 ПУЭ.')
         te.table_name('Проверка чувствительности при минимальныx токах КЗ в точке подключения АФК к сети')
-        te.table_head('Место установки', 'Iкз,А', 'Ir,A', 'Кч', 'Isd,A', 'Кч', 'Ii,A', 'Кч')
+        te.table_head('Место установки', 'Iкз,А', 'Ir,A', 'Кч', 'Isd,A', 'Кч', 'Ii,A', 'Кч',
+                      'Чувствительность достаточна')
         for index, qf in enumerate(self.qfs):
             qf.kch(te, ikzmin=self.ikzmin[index])
 

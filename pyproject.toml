@@ -1,6 +1,6 @@
 [tool.poetry]
 name = "calcustavkirza"
-version = "0.6.0"
+version = "0.7.0"
 description = ""
 authors = ["vicjan89 <vicjan89@gmail.com>"]
 readme = "README.md"

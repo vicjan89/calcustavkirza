@@ -10,6 +10,23 @@ from calcustavkirza.classes import Element
 class EF(Element):
     '''
     Класс описывает токовую защиту нулевой последовательности
+    R: int | float | None = None
+    Kch: int = 1.5
+    Kn: float = 1.2 # to take into account the capacity of transformers and motors, we take a coefficient equal to 1.2
+    Ul: float = 10
+    isz: float
+    isz_note: str = ''
+    ic: float | None = None
+    ic_note: str = ''
+    index_ct: int | None = None
+    t: float
+    t_note: str = 'отключение'
+    t1: float | None = None
+    t1_note: str = ''
+    t_au: float | None = None
+    time_prot: bool = False
+    name: str = 'Токовая защита нулевой последовательности'
+    name_short: str = 'ТЗНП'
     '''
     R: int | float | None = None
     Kch: int = 1.5
@@ -91,3 +108,6 @@ class EF(Element):
 
     def table_settings_bmz(self):
         return [self.table_settings_bmz_first(), self.table_settings_bmz_second(), self.table_settings_bmz_data()]
+
+    def description(self, te: TextEngine):
+        return 
