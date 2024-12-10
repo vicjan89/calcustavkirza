@@ -1,6 +1,6 @@
 from textengines.interfaces import TextEngine
 
-from calcustavkirza.classes import Element
+from calcustavkirza.classes import Element, Doc
 from calcustavkirza.select.QF import QF
 
 class Line(Element):
@@ -12,13 +12,7 @@ class Line(Element):
     def r(self):
         return self.ro * self.l / self.s * 2
 
-class CalcScDc(Element):
-    umin: float = 2. # напряжение на элементе в конце разряда
-    n: int # количество элементов АКБ
-    r: float = 0.000239 # сопротивление внутреннее элемента АКБ
-    kc: float = 0.59 # коэффициент снижения тока КЗ из-за дуги
-    lines: list[Line]
-    qfs: list[QF] # список автоматов в цепи
+class CalcScDcDoc(Doc):
 
     def write(self, te: TextEngine):
         te.h2('Методика расчёта тока КЗ')
@@ -68,4 +62,13 @@ class CalcScDc(Element):
                 '}{' + f'{r_total:.5f}' + '} = ' + f'{isc:.1f} A')
         return isc
 
+
+
+class CalcScDc(Element):
+    umin: float = 2. # напряжение на элементе в конце разряда
+    n: int # количество элементов АКБ
+    r: float = 0.000239 # сопротивление внутреннее элемента АКБ
+    kc: float = 0.59 # коэффициент снижения тока КЗ из-за дуги
+    lines: list[Line]
+    qfs: list[QF] # список автоматов в цепи
 

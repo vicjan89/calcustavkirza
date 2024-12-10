@@ -1,26 +1,8 @@
 from textengines.interfaces import TextEngine
 
+from calcustavkirza.classes import Element, Doc
 
-from calcustavkirza.classes import Element
-
-class BFP(Element):
-    '''
-    Класс для описания УРОВ
-    isz: float # ток срабатывания в амперах
-    t: float # время срабатывания
-    t_note: str = "отключение вышестоящего присоединения"
-    index_ct: int | None = None
-    time_prot: bool = False
-    name: str = 'Устройство резервирования отказа выключателя'
-    name_short: str = 'УРОВ'
-    '''
-    isz: float # ток срабатывания в амперах
-    t: float # время срабатывания
-    t_note: str = "отключение вышестоящего присоединения"
-    index_ct: int | None = None
-    time_prot: bool = False
-    name: str = 'Устройство резервирования отказа выключателя'
-    name_short: str = 'УРОВ'
+class BFPDoc(Doc):
 
     def calc_ust(self, te: TextEngine, res_sc_min: list, res_sc_max: list):
         te.table_name(self.name)
@@ -50,3 +32,29 @@ class BFP(Element):
 
     def table_settings_bmz(self):
         return [self.table_settings_bmz_first(), self.table_settings_bmz_second(), self.table_settings_bmz_data()]
+
+    def ap_generate(self, te: TextEngine):
+        te.ul(self.name + ' Пуск УРОВ выключателя осуществляется по логике от собственных функций защит устройства или'
+                          ' от отключающего импульса по внешнему входу от всех защит, действующих на отключение '
+                          'выключателя. По истечении выдержки времени при наличии тока повреждения большего уставки по '
+                          'току УРОВ действует на отключение выключателей смежных питающих присоединений;')
+
+class BFP(Element, BFPDoc):
+    '''
+    Класс для описания УРОВ
+    isz: float # ток срабатывания в амперах
+    t: float # время срабатывания
+    t_note: str = "отключение вышестоящего присоединения"
+    index_ct: int | None = None
+    time_prot: bool = False
+    name: str = 'Устройство резервирования отказа выключателя'
+    name_short: str = 'УРОВ'
+    '''
+    isz: float # ток срабатывания в амперах
+    t: float # время срабатывания
+    t_note: str = "отключение вышестоящего присоединения"
+    index_ct: int | None = None
+    time_prot: bool = False
+    name: str = 'Устройство резервирования отказа выключателя'
+    name_short: str = 'УРОВ'
+

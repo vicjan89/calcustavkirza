@@ -12,6 +12,44 @@ class VTwinding(Element):
     smax: int
     uk: float
 
+def table_head_check_power(te: TextEngine):
+    te.table_name('Проверка мощности обмоток и падения напряжения в кабеле трансформаторов напряжения')
+    te.table_head('Присоединение, название, марка', 'Класс точности, схема соединения, мощность обмотки, ВА',
+                  'Нагрузка, ВА', 'Длина и площадь сечения жилы медного кабеля',
+                  'Фактическое падение напряжения (норма), %', widths=(3, 2, 4, 1, 1))
+
+def table_row_check_power(te: TextEngine, pris_name: str, vt_scheme_name: str, vt_name: str, mark: str, w_accuracy: str,
+                          w_schema: str, power_va: float, load_names: list[str],
+                          load_power_consumptions: list[float], load_quantities: list[int], length: float, s: float,
+                          un: float, du2permissible: float):
+    if len(load_names) == len(load_power_consumptions) == len(load_quantities):
+        load_str = []
+        power_total = 0
+        for num, name in enumerate(load_names):
+            load_str.append(f'{name} ({load_power_consumptions[num]}x{load_quantities[num]})')
+            power_total += load_power_consumptions[num] * load_quantities[num]
+    i = power_total * 3 / un
+    r = 0.0175 * length / s
+    te.table_row(f'{pris_name}, {vt_scheme_name} {vt_name}, {mark}', f'{w_accuracy}, {w_schema}, {power_va}',
+                 ', '.join(load_str) + f' = {power_total}', f'{length}м {s}мм²',
+                 f'{i * r / un * 100:.2f} ({du2permissible})')
+
+def metods_check_voltage_drop(te: TextEngine):
+    te.h3('Методика проверки ТН по допустимому падению напряжения')
+    te.p('Расчёт тока в наиболее нагруженной фазе обмотки производим по формуле:')
+    te.math(r'I_{\text{НАГР}} = \frac{\sqrt{3} \cdot S_{\text{НАГР}}}{U_{\text{мф}}}, А')
+    te.ul(' где ' + te.m(r'S_{\text{НАГР}}') + ' – мощность наиболее нагруженной фазы, ВА,')
+    te.ul(' ' + te.m(r'U_{\text{мф}}') + ' – номинальное междуфазное напряжение, В.')
+    te.p('Сопротивление кабельной линии от трансформатора напряжения до конечного потребителя составляет:')
+    te.math(r'R_{\text{КАБ}} = \rho \cdot \frac{l}{S} ,')
+    te.ul('где ' + te.m(r'\rho') + ' – удельное сопротивление меди равное 0,0175 ' +
+          te.m(r'\text{Ом} \cdot \frac{\text{мм}^2}{\text{м}};'))
+    te.ul('l – длина контрольного кабеля, м; ')
+    te.ul('S – сечение контрольного кабеля, мм2')
+    te.p('Величина падения напряжения до наиболее отдаленного потребителя в обмотке ТН:')
+    te.math(r'\Delta U = \sqrt{3} \cdot I_{\text{НАГР}} \cdot R_{\text{КАБ}} < \Delta U_{\text{ДОП}}')
+
+
 class VT(Element):
     name: str
     model: str

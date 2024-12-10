@@ -2,6 +2,13 @@ from calcustavkirza.classes import Element
 from textengines.interfaces import TextEngine
 
 class AutoReclose(Element):
+    '''
+    t: float
+    t_note: str = "повторное включение"
+    time_prot: bool = False
+    name: str = "Автоматическое повторное включение"
+    name_short: str = 'АПВ'
+    '''
 
     t: float
     t_note: str = "повторное включение"
