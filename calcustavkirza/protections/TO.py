@@ -8,7 +8,7 @@ class TODoc(Doc):
 
     def sogl_posl(self, te: TextEngine):
         isz_posl_sogl = self.isz_posl/self.Kns
-        if isz_posl_sogl <= self.isz:
+        if isz_posl_sogl < self.isz:
             self.add_warning('Защита не согласована с последующей защитой')
         te.table_row(f'Первичный ток срабатывания защиты по условию согласования с последующей защитой '
                      f'{self.isz_posl_note}, А',
@@ -18,7 +18,7 @@ class TODoc(Doc):
 
     def sogl_prev(self, te: TextEngine):
         isz_prev_sogl = self.isz_prev * self.Kns
-        if isz_prev_sogl >= self.isz:
+        if isz_prev_sogl > self.isz:
             self.add_warning('Защита не согласована с предыдущей защитой')
         te.table_row(f'Первичный ток срабатывания защиты по условию согласования с последующей защитой '
                      f'{self.isz_prev_note}, А',

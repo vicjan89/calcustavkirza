@@ -15,7 +15,12 @@ class MTZDoc(Doc):
             te.table_row('Коэффициент надёжности', 'Кн', self.kn)
             te.table_row('Коэффициент возврата', 'Кв', self.kv)
             te.table_row('Коэффициент самозапуска', 'Ксзп', self.Ksz)
-            te.table_row('Максимальный рабочий ток или номинальный ток ТТ, А', 'Iрмакс', f'{self.irmax:.2f}')
+            if self.irmax_note:
+                irmax_note = f' ({self.irmax_note})'
+            else:
+                irmax_note = ''
+            te.table_row(f'Максимальный рабочий ток или номинальный ток ТТ{irmax_note}, А', 'Iрмакс',
+                         f'{self.irmax:.2f}')
         if self.isz_prev:
             te.table_row(f'Первичный ток срабатывания защиты по условию согласования с предыдущей защитой '
                          f'{self.isz_prev_note}, А',
@@ -143,6 +148,7 @@ class MTZ(Element, MTZDoc):
     i_kz_min_res: float | None = None
     i_kz_min_res_note: str = ''
     irmax: float | None = None
+    irmax_note: str = ''
     kn: float = 1.1
     kns: float = 1.1
     kv: float = 0.95
