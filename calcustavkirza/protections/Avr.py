@@ -1,24 +1,28 @@
 from textengines.interfaces import TextEngine
 
 
-from calcustavkirza.classes import Element, Doc
+from calcustavkirza.classes import Element
 
 
-class AvrDoc(Doc):
+class Avr:
 
-    def calc_ust(self, te: TextEngine, **kwargs):
-        te.table_name(self.name)
-        te.table_head('Наименование величины', 'Расчётная формула, обозначение', 'Результат расчёта',
+    def __init__(self, te: TextEngine, store, *args, **kwargs):
+        self.te = te
+        self.store = store
+
+    def calc_settings(self):
+        self.te.table_name(self.store.name)
+        self.te.table_head('Наименование величины', 'Расчётная формула, обозначение', 'Результат расчёта',
                            widths=(3,2,1))
-        if self.t:
-            te.table_row(f'Время срабатывания на отключение основного питания и включение резервного {self.note}, с',
+        if self.store.t:
+            self.te.table_row(f'Время срабатывания на отключение основного питания и включение резервного {self.note}, с',
                               'tср=tср вышестоящего АВР + dt', self.t)
-        if self.tpred:
-            te.table_row(f'Время срабатывания на отключение основного питания вышестоящего АВР, с',
-                              'tср пред.', self.tpred)
-        if self.tvozvr:
-            te.table_row(f'Время срабатывания возврата АВР (по рекомендациям завода-изготовителя терминалов защит), с',
-                              'tвозвр', self.tvozvr)
+        if self.store.t_subsequent:
+            self.te.table_row(f'Время срабатывания на отключение основного питания вышестоящего АВР, с',
+                              'tср пред.', self.store.t_subsequent)
+        if self.store.tvozvr:
+            self.te.table_row(f'Время срабатывания возврата АВР (по рекомендациям завода-изготовителя терминалов защит), с',
+                              'tвозвр', self.store.tvozvr)
 
     def table_settings(self):
         t_str = ''
@@ -40,7 +44,7 @@ class AvrDoc(Doc):
         return [self.table_settings_bmz_first(), self.table_settings_bmz_second(), self.table_settings_bmz_data()]
 
 
-class Avr(Element, AvrDoc):
+class AvrStore(Element):
 
     t: float
     t_note: str = "отключение основного питания и включение резервного"

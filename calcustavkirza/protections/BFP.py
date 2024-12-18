@@ -1,14 +1,18 @@
 from textengines.interfaces import TextEngine
 
-from calcustavkirza.classes import Element, Doc
+from calcustavkirza.classes import Element
 
-class BFPDoc(Doc):
+class BFP:
 
-    def calc_ust(self, te: TextEngine, res_sc_min: list, res_sc_max: list):
-        te.table_name(self.name)
-        te.table_head('Наименование величины', 'Расчётная формула, обозначение', 'Результат расчёта', widths=(3,2,1))
-        te.table_row('Принимаем первичный ток срабатывания равным, А', 'Iсз', self.isz)
-        te.table_row(f'Время срабатывания {self.t_note} , с', 'tср', self.t)
+    def __init__(self, te: TextEngine, store, *args, **kwargs):
+        self.te = te
+        self.store = store
+
+    def calc_settings(self):
+        self.te.table_name(self.store.name)
+        self.te.table_head('Наименование величины', 'Расчётная формула, обозначение', 'Результат расчёта', widths=(3,2,1))
+        self.te.table_row('Принимаем первичный ток срабатывания равным, А', 'Iсз', self.store.isz)
+        self.te.table_row(f'Время срабатывания {self.store.t_note} , с', 'tср', self.store.t)
 
     def table_settings(self, te: TextEngine):
         te.table_row(self.name, f'{self.isz} A', self.t, '')
@@ -39,7 +43,7 @@ class BFPDoc(Doc):
                           'выключателя. По истечении выдержки времени при наличии тока повреждения большего уставки по '
                           'току УРОВ действует на отключение выключателей смежных питающих присоединений;')
 
-class BFP(Element, BFPDoc):
+class BFPStore(Element):
     '''
     Класс для описания УРОВ
     isz: float # ток срабатывания в амперах

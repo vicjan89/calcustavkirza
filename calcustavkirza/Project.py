@@ -11,6 +11,7 @@ from calcustavkirza.select.CT import CT, ct_metods
 from calcustavkirza.select.DC import DC
 from calcustavkirza.classes import Element, Doc
 from store.store import JsonStorage
+from calcustavkirza.electro_store import ProjectStore
 
 
 def num2str_list(l: list) -> list:
@@ -26,7 +27,11 @@ def num2str_list(l: list) -> list:
             res.append(i)
     return res
 
-class ProjectDoc:
+class Project:
+
+    def __init__(self, project_store: ProjectStore, te: TextEngine):
+        self.project_store = project_store
+        self.te = te
 
     def table_settings_bmz(self):
         self.te.table_grid_name('Таблица уставок РЗА РП 10кВ Водозабор-Коммунальный и ПС 110кВ Сталь')
@@ -120,13 +125,8 @@ class ProjectDoc:
                 else:
                     repeat = False
 
-    def calc_setting(self, te: TextEngine):
-        if self.path_res_sc:
-            js = JsonStorage(path=self.path_res_sc[:-5])
-            res_sc_max, res_sc_min = js.read()
-        else:
-            res_sc_max = (None, None)
-            res_sc_min = (None, None)
+    def calc_settings(self):
+        res_sc_max, res_sc_min = self.project_store.res_sc
         # if self.calc_load:
         #     self.te.h2('Расчёт значений токов нагрузок')
         #     self.net.calc_pf_modes()
@@ -158,9 +158,10 @@ class ProjectDoc:
         #         self.te.table_row(name, *row)
         #
 
-        te.h1('Расчёт и выбор уставок РЗА')
-        for pris in self.pris.all().order_by('name'):
-            pris.calc_ust(te, res_sc_min[1], res_sc_max[1])
+        self.te.h1('Расчёт и выбор уставок РЗА')
+        prises = [Pris(te, pris_store, res_sc_min, res_sc_max) for pris_store in self.project_store.prises(order='name')]
+        for pris in prises:
+            pris.calc_settings()
             # if self.ct:
             #     self.te.h1('Выбор трансформаторов тока')
             #     self.ct[0].metods()
@@ -733,68 +734,68 @@ class RequirementDeviceDoc(Doc):
         te.p('* Далее приводятся разъяснения по каждой позиции, по которой имеется частичное или полное несоответствие '
              'требованиям Заказчика')
 
-class Project(Element, ProjectDoc):
-    model_config = ConfigDict(arbitrary_types_allowed=True)
-    res_sc_min: dict | None = None
-    res_sc_max: dict | None = None
-    pris: list[Pris] | None = None
-    ct: list[CT] | None = None
-    vt_section_input: bool | None = None
-    protection_terminal_reservation: bool | None = None
-    operating_current_distribution_cabinet: bool | None = None
-    two_batteries: bool | None = None
-    avr: bool | None = None # наличие АВР
-    zdz: bool | None = None # наличие ЗДЗ (указать напряжение ячеек)
-    rzn: int | None = None # сопротивление резистора заземления нейтрали
-    name_ss: str | None = None # название питающей подстанции на которой заземлена нейтраль через резистор
-    un: float | None = None # номинальное напряжения сети
-    rp: bool | None = None # если True то защиты ОЗЗ описываются как для РП иначе как для подстанции
-    dc: DC | None = None
-
-    def model_post_init(self, __context: Any) -> None:
-        if self.vt_section_input is None:
-            self.vt_section_input = bool(input('Установить ТН на ввод на секцию шин?'))
-        if self.protection_terminal_reservation is None:
-            self.protection_terminal_reservation = bool(input('Выполнить ближнее резервирование?'))
-        if self.operating_current_distribution_cabinet is None:
-            self.operating_current_distribution_cabinet = bool(input('Добавить шкаф распределение оперативного тока?'))
-        if self.two_batteries is None:
-            self.two_batteries = bool(input('Установить вторую АКБ?'))
-        if self.iec_61850_8_1 is None:
-            self.iec_61850_8_1 = bool(input('Добавить поддержку протокола IEC 61850-8-1 ?'))
-        if self.avr is None:
-            self.avr = input('Добавить АВР (если да то введите напряжение для АВР в кВ)?')
-        if self.zdz is None:
-            self.zdz = input('Добавить ЗДЗ (укажите напряжение ячеек КРУ)?')
-        if self.rzn is None:
-            self.rzn = input('Добавить резистивно-заземлённую нейтраль сети (указать напряжение сети в кВ)?')
-        if self.dc is None:
-            self.dc = DC()
-
-    def add_pris(self, pris: Pris):
-        if self.pris is None:
-            self.pris = []
-        self.pris.append(pris)
-
-    @property
-    def power_consumption_total(self):
-        return sum([p.power_consumption_total for p in self.pris])
-
-    @property
-    def power_consumption_iter(self):
-        for p in self.pris:
-            for power_data in p.power_consumption_iter:
-                yield power_data
-
-    @property
-    def power_consumption_agregate(self):
-        data = {}
-        for name, power, quantity in self.power_consumption_iter:
-            if name in data:
-                if data[name][0] != power:
-                    raise ValueError('Одинаковые названия с разными мощностями')
-                data[name][1] += quantity
-            else:
-                data[name] = [power, quantity]
-        return data
-
+# class Project(Element, ProjectDoc):
+#     model_config = ConfigDict(arbitrary_types_allowed=True)
+#     res_sc_min: dict | None = None
+#     res_sc_max: dict | None = None
+#     pris: list[Pris] | None = None
+#     ct: list[CT] | None = None
+#     vt_section_input: bool | None = None
+#     protection_terminal_reservation: bool | None = None
+#     operating_current_distribution_cabinet: bool | None = None
+#     two_batteries: bool | None = None
+#     avr: bool | None = None # наличие АВР
+#     zdz: bool | None = None # наличие ЗДЗ (указать напряжение ячеек)
+#     rzn: int | None = None # сопротивление резистора заземления нейтрали
+#     name_ss: str | None = None # название питающей подстанции на которой заземлена нейтраль через резистор
+#     un: float | None = None # номинальное напряжения сети
+#     rp: bool | None = None # если True то защиты ОЗЗ описываются как для РП иначе как для подстанции
+#     dc: DC | None = None
+#
+#     def model_post_init(self, __context: Any) -> None:
+#         if self.vt_section_input is None:
+#             self.vt_section_input = bool(input('Установить ТН на ввод на секцию шин?'))
+#         if self.protection_terminal_reservation is None:
+#             self.protection_terminal_reservation = bool(input('Выполнить ближнее резервирование?'))
+#         if self.operating_current_distribution_cabinet is None:
+#             self.operating_current_distribution_cabinet = bool(input('Добавить шкаф распределение оперативного тока?'))
+#         if self.two_batteries is None:
+#             self.two_batteries = bool(input('Установить вторую АКБ?'))
+#         if self.iec_61850_8_1 is None:
+#             self.iec_61850_8_1 = bool(input('Добавить поддержку протокола IEC 61850-8-1 ?'))
+#         if self.avr is None:
+#             self.avr = input('Добавить АВР (если да то введите напряжение для АВР в кВ)?')
+#         if self.zdz is None:
+#             self.zdz = input('Добавить ЗДЗ (укажите напряжение ячеек КРУ)?')
+#         if self.rzn is None:
+#             self.rzn = input('Добавить резистивно-заземлённую нейтраль сети (указать напряжение сети в кВ)?')
+#         if self.dc is None:
+#             self.dc = DC()
+#
+#     def add_pris(self, pris: Pris):
+#         if self.pris is None:
+#             self.pris = []
+#         self.pris.append(pris)
+#
+#     @property
+#     def power_consumption_total(self):
+#         return sum([p.power_consumption_total for p in self.pris])
+#
+#     @property
+#     def power_consumption_iter(self):
+#         for p in self.pris:
+#             for power_data in p.power_consumption_iter:
+#                 yield power_data
+#
+#     @property
+#     def power_consumption_agregate(self):
+#         data = {}
+#         for name, power, quantity in self.power_consumption_iter:
+#             if name in data:
+#                 if data[name][0] != power:
+#                     raise ValueError('Одинаковые названия с разными мощностями')
+#                 data[name][1] += quantity
+#             else:
+#                 data[name] = [power, quantity]
+#         return data
+#

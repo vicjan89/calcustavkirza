@@ -1,3 +1,4 @@
+from calcustavkirza.electro_store import PrisStore, ModelStore
 from calcustavkirza.select.devices import Device, Terminal
 from textengines.interfaces import TextEngine
 
@@ -67,7 +68,14 @@ class Bus(Element):
     devices: list[Device] | None = None
     terminals: list[Terminal] | None = None
 
-class PrisDoc:
+class Pris:
+
+    def __init__(self, te: TextEngine, pris_store: PrisStore, res_sc_min: dict, res_sc_max: dict, res_c: dict | None = None):
+        self.te = te
+        self.pris_store = pris_store
+        self.res_sc_min = res_sc_min
+        self.res_sc_max = res_sc_max
+        self.res_c = res_c
 
     @property
     def power_consumption_total(self):
@@ -136,19 +144,15 @@ class PrisDoc:
                 self.voltage)
 
 
-    def calc_ust(self, te: TextEngine, res_sc_min, res_sc_max):
-        first = True
-        for typ in ('dif', 'dzsh', 'zm', 'ef4', 'mtz', 'lzsh', 'to', 'bfp', 'cbfp', 'ef', 'efdir',
-                    'apv', 'avr', 'voltage', 'overload'):
-            if hasattr(self, typ):
-                prots = getattr(self, typ)
-                for p in prots.all():
-                    if first:
-                        te.h2(self.name)
-                        if self.note:
-                            te.p(self.note)
-                        first = False
-                    p.calc_ust(te=te, res_sc_min=res_sc_min, res_sc_max=res_sc_max)
+    def calc_settings(self):
+        self.protections = [globals()[protection_store.class_name](te=te, res_sc_min=res_sc_min, res_sc_max=res_sc_max)
+                            for protection_store in self.pris_store.prots]
+        if self.protections:
+            te.h2(self.pris_store.name)
+            if self.pris_store.note:
+                self.te.p(self.pris_store.note)
+        for protection in self.protections:
+            protection.calc_settings()
 
     def table_settings(self, te: TextEngine):
         te.table_name(self.name)
@@ -183,52 +187,52 @@ class PrisDoc:
         return prot
 
 
-class Pris(Element):
-    loc: dict | None = None
-    ct: list[CT] | None = None
-    vt: list[VT] | None = None
-    dif: list[T3WPDIF] | None = None
-    dzsh: list[DZSH] | None = None
-    zm: list[ZMQPDIS] | None = None
-    ef4: list[EF4PTOC] | None = None
-    mtz: list[MTZ] | None = None
-    to: list[TO] | None = None
-    ef: list[EF] | None = None
-    lzsh: list[LZSH] | None = None
-    bfp: list[BFP] | None = None
-    cbfp: list[ControlBFP] | None = None
-    efdir: list[EFdir] | None = None
-    apv: list[AutoReclose] | None = None
-    avr: list[Avr] | None = None
-    voltage: list[Voltage] | None = None
-    overload: list[OverLoad] | None = None
-    zdz: bool | None = None # наличе ЗДЗ
-    cb: bool | None = None # наличие выключателя
-    trip_ef: bool | None = None # отключение от ТЗНП
-    saon: bool | None = None # отключение от САОН-АСБС
-    achr: bool | None = None # отключение от АЧР
-    note: str = ''
-    buses: list[Bus] | None = None # шинки питания устройств
-    quantity: int | None = None # количество присоединений
-
-    def model_post_init(self, __context) -> None:
-        super().model_post_init(__context)
-        if not self.quantity:
-            self.quantity = int(input('Количество присоединений? '))
-
-
-    def add_device(self, device: Device | list[Device]):
-        if self.devices is None:
-            self.devices = []
-        if isinstance(device, list):
-            self.devices.extend(device)
-        else:
-            self.devices.append(device)
-
-    def add_terminal(self, terminal: Terminal | list[Terminal]):
-        if self.terminals is None:
-            self.terminals = []
-        if isinstance(terminal, list):
-            self.terminals.extend(terminal)
-        else:
-            self.terminals.append(terminal)
+# class Pris(Element):
+#     loc: dict | None = None
+#     ct: list[CT] | None = None
+#     vt: list[VT] | None = None
+#     dif: list[T3WPDIF] | None = None
+#     dzsh: list[DZSH] | None = None
+#     zm: list[ZMQPDIS] | None = None
+#     ef4: list[EF4PTOC] | None = None
+#     mtz: list[MTZ] | None = None
+#     to: list[TO] | None = None
+#     ef: list[EF] | None = None
+#     lzsh: list[LZSH] | None = None
+#     bfp: list[BFP] | None = None
+#     cbfp: list[ControlBFP] | None = None
+#     efdir: list[EFdir] | None = None
+#     apv: list[AutoReclose] | None = None
+#     avr: list[Avr] | None = None
+#     voltage: list[Voltage] | None = None
+#     overload: list[OverLoad] | None = None
+#     zdz: bool | None = None # наличе ЗДЗ
+#     cb: bool | None = None # наличие выключателя
+#     trip_ef: bool | None = None # отключение от ТЗНП
+#     saon: bool | None = None # отключение от САОН-АСБС
+#     achr: bool | None = None # отключение от АЧР
+#     note: str = ''
+#     buses: list[Bus] | None = None # шинки питания устройств
+#     quantity: int | None = None # количество присоединений
+#
+#     def model_post_init(self, __context) -> None:
+#         super().model_post_init(__context)
+#         if not self.quantity:
+#             self.quantity = int(input('Количество присоединений? '))
+#
+#
+#     def add_device(self, device: Device | list[Device]):
+#         if self.devices is None:
+#             self.devices = []
+#         if isinstance(device, list):
+#             self.devices.extend(device)
+#         else:
+#             self.devices.append(device)
+#
+#     def add_terminal(self, terminal: Terminal | list[Terminal]):
+#         if self.terminals is None:
+#             self.terminals = []
+#         if isinstance(terminal, list):
+#             self.terminals.extend(terminal)
+#         else:
+#             self.terminals.append(terminal)

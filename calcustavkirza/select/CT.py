@@ -9,7 +9,7 @@ import matplotlib.pyplot as plt
 
 
 from calcustavkirza.classes import Element, Doc
-from calcustavkirza.Isc import CaseSC
+from calcustavkirza.calcsc.Isc import CaseSC
 from calcustavkirza.Characteristic import Characteristic
 from textengines.interfaces import TextEngine
 

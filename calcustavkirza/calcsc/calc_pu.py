@@ -1,3 +1,4 @@
+import dataclasses
 import math
 
 
@@ -6,13 +7,13 @@ from textengines.interfaces import TextEngine
 
 from calcustavkirza.classes import Element
 
-
-class Pu(Element):
+@dataclasses.dataclass
+class Pu:
     '''
     Операции по переводу в и из относительных единиц
     '''
-    s_mva: float = 1. # базовая мощность
     v_kv: float # базовое напряжение
+    s_mva: float = 1. # базовая мощность
 
     @property
     def i_ka(self) -> float:

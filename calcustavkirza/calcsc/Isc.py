@@ -8,9 +8,10 @@ from textengines.interfaces import TextEngine
 from calcustavkirza.classes import Element
 from calcustavkirza.calcsc.calc_pu import Pu
 from calcustavkirza.functions import complex2polar_str
+from calcustavkirza.electro_store import IscStore
 
 
-class Isc(Element):
+class ClassIscStore(Element):
     i: float | None = None #ток КЗ в амперах
     t: float | None = None #постоянная времени в мс
     a: float  | None = None #угол тока КЗ в градусах
@@ -22,6 +23,13 @@ class Isc(Element):
     i0: float | None = None
     a0: float | None = None
     kcd: float = 1 #коэффициент токораспределения
+
+class Isc:
+
+    def __init__(self, te: TextEngine, store: IscStore, pu: Pu):
+        self.te = te
+        self.store = store
+        self.pu = pu
 
     @property
     def isc(self):
@@ -64,6 +72,15 @@ class Isc(Element):
         '''
         z = self.u / math.sqrt(3) / cmath.rect(self.isc, math.radians(self.alfa)) / self.kcd
         return complex(abs(z.real), abs(z.imag))
+
+    @property
+    def z_abs(self):
+        '''
+
+        Returns:
+            float: модуль сопротивления
+        '''
+        return abs(self.z)
 
     @property
     def ts(self):
@@ -135,6 +152,10 @@ class Isc(Element):
         z = self.z
         return f'{z.real:.3f}+j{z.imag:.3f} Ом'
 
+    @property
+    def e(self): # ЭДС системы
+        return  self.store.u / math.sqrt(3)
+
     def __imul__(self, other):
         if not isinstance(other, int) and not isinstance(other, float):
             raise ArithmeticError("Правый операнд должен быть типом int или float")
@@ -180,29 +201,30 @@ class Isc(Element):
             raise ArithmeticError('Операнды заданы разными способами')
         return isc
 
-    def write(self, te: TextEngine, pu: Pu):
-        te.table_name(f'Технические данные: {self.name}')
-        te.table_head('Наименование', 'Обозначение', 'Расчётная формула', 'Числовые значения в формуле',
+    def write(self):
+        self.te.table_name(f'Технические данные: {self.name}')
+        self.te.table_head('Наименование', 'Обозначение', 'Расчётная формула', 'Числовые значения в формуле',
                       'Величина')
-        te.table_row('Ток трёхфазного короткого замыкания, кА', 'Iкз3', '', f'{self.ic/1000:.3f}',
+        self.te.table_row('Ток трёхфазного короткого замыкания, кА', 'Iкз3', '', f'{self.ic/1000:.3f}',
                      complex2polar_str(self.ic/1000))
         z_ohm = self.u/math.sqrt(3)/self.ic
         z_ohm = complex(abs(z_ohm.real), abs(z_ohm.imag))
-        te.table_row('Сопротивление прямой последовательности, Ом', 'x1c', 'Eлин/(√3·Iкз3)',
+        self.te.table_row('Сопротивление прямой последовательности, Ом', 'x1c', 'Eлин/(√3·Iкз3)',
                      f'{self.u}/(√3·{self.ic:.3f})', f'{z_ohm:.3f} ({complex2polar_str(z_ohm)})')
-        z_s_pu = z_ohm / pu.z_ohm
+        z_s_pu = z_ohm / self.pu.z_ohm
         z_s_pu = complex(abs(z_s_pu.real), abs(z_s_pu.imag))
-        te.table_row('Сопротивление прямой последовательности приведенное к базовому сопротивлению, о.е.', 'x1c',
-                     'x1c/Zб', f'{z_ohm:.3f}/{pu.z_ohm:.3f}', f'{z_s_pu:.5f} ({complex2polar_str(z_s_pu)})')
-        esys_pu = self.u/pu.v_kv/1000
-        te.table_row('ЭДС системы, о.е.', 'Ec*', 'Uc/Uб', f'{self.u/1000:.3f}/{pu.v_kv:.3f}', f'{esys_pu:.3f}')
+        self.te.table_row('Сопротивление прямой последовательности приведенное к базовому сопротивлению, о.е.', 'x1c',
+                     'x1c/Zб', f'{z_ohm:.3f}/{self.pu.z_ohm:.3f}', f'{z_s_pu:.5f} ({complex2polar_str(z_s_pu)})')
+        esys_pu = self.u/self.pu.v_kv/1000
+        self.te.table_row('ЭДС системы, о.е.', 'Ec*', 'Uc/Uб', f'{self.u/1000:.3f}/{self.pu.v_kv:.3f}', f'{esys_pu:.3f}')
         return esys_pu, z_s_pu
 
 
-class CaseSC(Element):
-    isc1: list[Isc] | None = None
-    isc3: list[Isc]
+# class CaseSCStore(Element):
+#     isc1: list[Isc] | None = None
+#     isc3: list[Isc]
 
+class CaseSC:
     def write(self, te: TextEngine):
         te.table_name(f'Технические данные о трёхфазных токах повреждения при {self.name}')
         te.table_head('Наименование ветви', 'Величина, A', 'Угол, °')
@@ -332,9 +354,10 @@ class CaseSC(Element):
         self.isc1.pop(index)
         self.isc3.pop(index)
 
-class CasesSC(Element):
-    cases: list[CaseSC]
+# class CasesSCStore(Element):
+#     cases: list[CaseSC]
 
+class CasesSCStore:
     def select(self, name: str):
         for case in self.cases:
             if case.name == name:

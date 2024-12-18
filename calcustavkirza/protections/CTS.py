@@ -3,7 +3,7 @@ from textengines.interfaces import TextEngine
 
 from calcustavkirza.classes import Element
 
-class CTS(Element):
+class CTSStore(Element):
     '''
     Current Transformer Superviser function
     u: float
@@ -31,25 +31,31 @@ class CTS(Element):
     name: str = 'Контроль исправности цепей тока'
     name_short: str = 'CTS'
 
-    def calc_ust(self, te: TextEngine, *args):
-        te.table_name(self.name)
-        te.table_head('Наименование величины', 'Расчётная формула, обозначение', 'Результат расчёта',
+class CTS:
+
+    def __init__(self, te: TextEngine, store, *args, **kwargs):
+        self.te = te
+        self.store = store
+
+    def calc_settings(self):
+        self.te.table_name(self.store.name)
+        self.te.table_head('Наименование величины', 'Расчётная формула, обозначение', 'Результат расчёта',
                       widths=(3,2,1))
-        te.table_row(f'Напряжение нулевой последовательности вторичное в нормальном режиме {self.un_note}, В',
-                     te.m(r'3U0_{\text{НОРМ}}'), f'{self.un:.2f}')
-        te.table_row('Коэффициент отстройки', te.m(r'K_{\text{ОТС}}'), self.kn)
-        te.table_row(f'Напряжение срабатывания нулевой последовательности вторичное расчётное, В',
+        self.te.table_row(f'Напряжение нулевой последовательности вторичное в нормальном режиме {self.store.un_note}, В',
+                     te.m(r'3U0_{\text{НОРМ}}'), f'{self.store.un:.2f}')
+        self.te.table_row('Коэффициент отстройки', te.m(r'K_{\text{ОТС}}'), self.store.kn)
+        self.te.table_row(f'Напряжение срабатывания нулевой последовательности вторичное расчётное, В',
                      te.m(r'U_{\text{ср}} = K_{\text{ОТС}} \cdot U_{\text{НОРМ}}'),
-                          f'{self.un * self.kn:.2f}')
-        te.table_row(f'Принимаем напряжение срабатывания нулевой последовательности, В', '3U0ср', self.u0)
-        te.table_row(f'Ток нулевой последовательности вторичный в нормальном режиме {self.inorm_note}, A',
-                     te.m(r'3I0_{\text{НОРМ}}'), f'{self.inorm:.2f}')
-        te.table_row(f'Ток срабатывания нулевой последовательности вторичный расчётный {self.i0_note}, В',
+                          f'{self.store.un * self.store.kn:.2f}')
+        self.te.table_row(f'Принимаем напряжение срабатывания нулевой последовательности, В', '3U0ср', self.store.u0)
+        self.te.table_row(f'Ток нулевой последовательности вторичный в нормальном режиме {self.store.inorm_note}, A',
+                     te.m(r'3I0_{\text{НОРМ}}'), f'{self.store.inorm:.2f}')
+        self.te.table_row(f'Ток срабатывания нулевой последовательности вторичный расчётный {self.store.i0_note}, В',
                      te.m(r'3I0_{\text{ср}} = K_{\text{ОТС}} \cdot I_{\text{НОРМ}}'),
-                     f'{self.inorm * self.kn:.2f}')
-        te.table_row(f'Принимаем ток срабатывания нулевой последовательности {self.note}, А',
-                     te.m(r'3I0_{\text{ср}}'), self.i0)
-        te.table_row(f'Время срабатывания {self.t_note}, с', 'tср', self.t)
+                     f'{self.store.inorm * self.store.kn:.2f}')
+        self.te.table_row(f'Принимаем ток срабатывания нулевой последовательности {self.note}, А',
+                     te.m(r'3I0_{\text{ср}}'), self.store.i0)
+        self.te.table_row(f'Время срабатывания {self.store.t_note}, с', 'tср', self.store.t)
 
     def table_settings(self, te: TextEngine):
         note = [self.note]

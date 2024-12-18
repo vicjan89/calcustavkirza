@@ -1,20 +1,24 @@
 import math
 
-from calcustavkirza.classes import Element, Doc
+from calcustavkirza.classes import Element
 from textengines.interfaces import TextEngine
 
-class ControlBFPDoc(Doc):
+class ControlBFP:
 
-    def calc_ust(self, te: TextEngine, **kwargs):
-        te.table_name(self.name)
-        te.table_head('Наименование величины', 'Расчётная формула, обозначение', 'Результат расчёта', widths=(3, 2, 1))
-        if self.isz:
-            te.table_row('Первичный фазный ток срабатывания защиты принимаем, А',
-                         'Iсз', f'{self.isz}')
-        if self.isz_ef:
-            te.table_row('Первичный ток нулевой последовательности срабатывания защиты принимаем, А',
-                         'Iсз', f'{self.isz_ef}')
-        te.table_row(f'Время срабатывания {self.note}, с', 'tср', 0)
+    def __init__(self, te: TextEngine, store, *args, **kwargs):
+        self.te = te
+        self.store = store
+
+    def calc_settings(self):
+        self.te.table_name(self.store.name)
+        self.te.table_head('Наименование величины', 'Расчётная формула, обозначение', 'Результат расчёта', widths=(3, 2, 1))
+        if self.store.isz:
+            self.te.table_row('Первичный фазный ток срабатывания защиты принимаем, А',
+                         'Iсз', f'{self.store.isz}')
+        if self.store.isz_ef:
+            self.te.table_row('Первичный ток нулевой последовательности срабатывания защиты принимаем, А',
+                         'Iсз', f'{self.store.isz_ef}')
+        self.te.table_row(f'Время срабатывания {self.store.note}, с', 'tср', 0)
 
     def table_settings(self):
         te.table_row(self.name, f'{self.isz} A', self.t, '') #TODO add isz_ef
@@ -41,7 +45,7 @@ class ControlBFPDoc(Doc):
     def ap_generate(self, te: TextEngine):
         te.ul('Отключение от УРОВ присоединений с контролем тока через свои трансформаторы тока')
 
-class ControlBFP(Element, ControlBFPDoc):
+class ControlBFP(Element):
     isz: float
     isz_ef: float | None = None
     index_ct: int | None = None
